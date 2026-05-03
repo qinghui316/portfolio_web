@@ -55,23 +55,3 @@ Run TypeScript checks:
 ```bash
 npm run lint
 ```
-
-## Environment Variables
-
-The app can run as a static front-end portfolio. Optional environment values are documented in `.env.example` for future integrations.
-
-```bash
-GEMINI_API_KEY="your_api_key"
-APP_URL="your_app_url"
-```
-
-## Design References
-
-- 3D scroll interaction reference: <https://red1-for-hek.vercel.app/>
-- Color and typography direction reference: <https://getdesign.md/claude/design-md>
-
-## Notes
-
-- Do not commit `.env.local` or any real secret values.
-- Keep public documentation free of personal contact information unless intentionally publishing it.
-- The generated `dist/` output and `node_modules/` are ignored by Git.
