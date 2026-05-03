@@ -23,15 +23,25 @@ export default function SectionExperience() {
       company: "南昌大学 211 双一流",
       role: "建筑学 / 硕士",
       desc: ""
+    },
+    {
+      period: "2018.09 - 2023.06",
+      company: "江西水利电力大学",
+      role: "建筑学 / 本科",
+      desc: ""
     }
   ];
 
   return (
-    <section className="bg-canvas py-32 relative text-ink z-20">
+    <section className="bg-canvas py-32 relative text-ink z-20 overflow-hidden">
+      <div className="absolute inset-x-0 top-0 h-px bg-hairline" />
       <div className="max-w-[1200px] mx-auto px-6 md:px-12">
-        <h2 className="text-display-lg text-center mb-6">
-          My career &<br/> <span className="text-primary italic">experience</span>
-        </h2>
+        <div className="text-center">
+          <p className="font-mono text-xs uppercase tracking-[0.26em] text-primary mb-5">Experience</p>
+          <h2 className="font-display text-5xl md:text-7xl leading-[0.95] mb-6">
+            My career &<br/> <span className="text-primary italic">education</span>
+          </h2>
+        </div>
         
         <div className="relative mt-24">
           {/* Center timeline line */}
@@ -50,7 +60,7 @@ export default function SectionExperience() {
                 </div>
                 
                 <div className={`w-full md:w-1/2 ${i % 2 === 0 ? 'md:pr-16 text-left md:text-right' : 'md:pl-16'}`}>
-                  <div className="font-display text-4xl md:text-5xl text-ink/20 font-bold mb-4">{exp.period.split(' - ')[0]}</div>
+                  <div className="font-display text-4xl md:text-5xl text-ink/20 font-medium mb-4">{exp.period.split(' - ')[0]}</div>
                   {exp.desc && <p className="text-body text-sm leading-relaxed max-w-sm inline-block text-left">{exp.desc}</p>}
                 </div>
 

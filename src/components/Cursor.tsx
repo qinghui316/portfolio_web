@@ -7,6 +7,9 @@ export default function Cursor() {
   useEffect(() => {
     const cursor = cursorRef.current;
     if (!cursor) return;
+    if (window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
 
     const onMouseMove = (e: MouseEvent) => {
       gsap.to(cursor, {
@@ -45,7 +48,7 @@ export default function Cursor() {
   return (
     <div
       ref={cursorRef}
-      className="fixed top-0 left-0 w-8 h-8 rounded-full bg-primary/40 pointer-events-none z-50 transform -translate-x-1/2 -translate-y-1/2 mix-blend-multiply backdrop-blur-sm hidden lg:block"
+      className="fixed top-0 left-0 w-8 h-8 rounded-full bg-primary/45 pointer-events-none z-[80] transform -translate-x-1/2 -translate-y-1/2 mix-blend-difference backdrop-blur-sm hidden lg:block"
     />
   );
 }

@@ -4,135 +4,238 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
 
+type Project = {
+  title: string;
+  href?: string;
+  demo?: string;
+  position: string;
+  desc: string;
+  tags: string[];
+  visual: "moonai" | "yaoxiaohui" | "video" | "embedding" | "course";
+};
+
+function ProjectVisual({ type }: { type: Project["visual"] }) {
+  if (type === "moonai") {
+    return (
+      <div className="project-visual moonai-visual">
+        <div className="mock-window">
+          <div className="mock-topbar"><span /><span /><span /></div>
+          <div className="mock-grid">
+            <div className="mock-sidebar" />
+            <div className="mock-script">
+              <i />
+              <i />
+              <i />
+              <i />
+            </div>
+            <div className="mock-preview">
+              <b>SHOT</b>
+              <em>AI</em>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === "yaoxiaohui") {
+    return (
+      <div className="project-visual flow-visual">
+        {["Feishu", "MCP", "ComfyUI", "API"].map((label) => (
+          <div key={label} className="flow-node">{label}</div>
+        ))}
+        <div className="flow-line flow-line-a" />
+        <div className="flow-line flow-line-b" />
+        <div className="flow-line flow-line-c" />
+      </div>
+    );
+  }
+
+  if (type === "video") {
+    return (
+      <div className="project-visual timeline-visual">
+        {Array.from({ length: 12 }).map((_, index) => (
+          <span key={index} style={{ height: `${26 + (index % 4) * 18}px` }} />
+        ))}
+        <div className="timeline-chip">ASR + VLM + FFmpeg</div>
+      </div>
+    );
+  }
+
+  if (type === "embedding") {
+    return (
+      <div className="project-visual matrix-visual">
+        {Array.from({ length: 36 }).map((_, index) => (
+          <span key={index} className={index % 7 === 0 || index % 11 === 0 ? "is-hot" : ""} />
+        ))}
+        <div className="matrix-label">RECALL@K</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="project-visual course-visual">
+      {["SOP", "Demo", "ComfyUI", "Agent"].map((label, index) => (
+        <div key={label} className="course-step">
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          {label}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function SectionProjects() {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
-  const projects = [
+  const projects: Project[] = [
     {
       title: "MoonAI 短剧 Agent 工作台",
       href: "https://github.com/qinghui316/moonaigc",
       demo: "http://43.167.184.248:6402/",
       position: "AI 短剧创作平台 / 个人独立全栈开发并部署上线",
-      desc: "证明候选人能独立完成 AI 产品从前端、后端、数据、AI 链路到部署上线。",
-      tags: ["React+TS", "Node.js", "Express", "Prisma", "PostgreSQL", "JWT", "AI生图", "TTS", "FFmpeg"]
+      desc: "从剧本改编、镜头语言、分镜生成、参考图匹配到视频合成，串起完整 AI 创作链路。",
+      tags: ["React+TS", "Node.js", "Prisma", "PostgreSQL", "JWT", "FFmpeg"],
+      visual: "moonai",
     },
     {
-      title: "遥小绘飞书多维表格AIGC平台",
+      title: "遥小绘飞书多维表格 AIGC 平台",
       position: "团队内部 AIGC 操作平台",
-      desc: "解决 ComfyUI 和 AI 工具技术门槛高、工具复用困难的问题。证明候选人能把零散工具封装成标准化、可批量、可被 LLM 调用的生产系统。",
-      tags: ["Agent", "MCP", "ComfyUI", "飞书多维表格", "Python", "Local API"]
+      desc: "把 ComfyUI、本地 API、RunningHub、爬虫和闭源接口封装成可批量调用的 MCP tool。",
+      tags: ["Agent", "MCP", "ComfyUI", "飞书多维表格", "Python", "Local API"],
+      visual: "yaoxiaohui",
     },
     {
       title: "video_fast_clip 混剪系统",
       position: "长视频到短视频成片的自动化流水线",
-      desc: "把视频理解、检索、生成和工程稳定性组合成自动化生产链。",
-      tags: ["Python", "OpenCV", "FFmpeg", "Embedding", "KMeans", "VLM", "LLM", "ASR"]
+      desc: "通过切片、检索、理解、生成、合成，把长视频变成可控的短视频生产流水线。",
+      tags: ["Python", "OpenCV", "FFmpeg", "Embedding", "KMeans", "VLM", "ASR"],
+      visual: "video",
     },
     {
       title: "Qwen3-VL-Embedding 微调",
       position: "针对 video_fast_clip 的脚本精细召回训练",
-      desc: "建设多模态召回训练闭环，证明候选人不仅会搭工具，也能参与模型训练、评估体系和可迭代基线建设。",
-      tags: ["Qwen3-VL-8B", "LoRA", "数据集构建", "Recall", "MRR", "NDCG"]
+      desc: "建设多模态召回训练闭环，用 Recall、MRR、NDCG 驱动视频素材检索效果迭代。",
+      tags: ["Qwen3-VL-8B", "LoRA", "数据集构建", "Recall", "MRR", "NDCG"],
+      visual: "embedding",
     },
     {
       title: "AIGC 课程与 SOP 建设",
       position: "AI 课程主讲老师与方法论沉淀",
-      desc: "证明候选人具备把复杂 AI 技术讲清楚、教会团队、沉淀流程的能力。",
-      tags: ["AI 辅助设计", "ComfyUI", "Agent 应用", "vibe coding", "SOP"]
-    }
+      desc: "把复杂 AI 工具拆成可教学、可复用、可落地的课程结构和团队 SOP。",
+      tags: ["AI 辅助设计", "ComfyUI", "Agent 应用", "vibe coding", "SOP"],
+      visual: "course",
+    },
   ];
 
   useEffect(() => {
     if (!containerRef.current || !trackRef.current) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    let timeline: gsap.core.Timeline | null = null;
 
     const setupPin = () => {
-      const boxes = document.getElementsByClassName("project-card");
-      if (!boxes.length) return;
-      
-      const containerLeft = containerRef.current!.getBoundingClientRect().left;
-      const firstBoxRect = boxes[0].getBoundingClientRect();
-      const parentWidth = window.innerWidth;
-      
-      // Calculate total width based on number of cards and their fixed width
-      const trackScrollDistance = (firstBoxRect.width * boxes.length) - parentWidth + 120 + 80; // 120 padding-right, 80 padding-left
+      timeline?.scrollTrigger?.kill();
+      timeline?.kill();
+      timeline = null;
 
-      const timeline = gsap.timeline({
+      if (!trackRef.current) return;
+      if (window.innerWidth <= 1024) {
+        gsap.set(trackRef.current, { clearProps: "transform" });
+        return;
+      }
+
+      const rightPadding = 160;
+      const trackScrollDistance = Math.max(0, trackRef.current.scrollWidth - window.innerWidth + rightPadding);
+
+      timeline = gsap.timeline({
         scrollTrigger: {
-          trigger: ".projects-section",
+          id: "projects-rail",
+          trigger: containerRef.current,
           start: "top top",
           end: `+=${trackScrollDistance}`,
           scrub: 1,
           pin: true,
           pinSpacing: true,
           anticipatePin: 1,
-          invalidateOnRefresh: true
-        }
+          invalidateOnRefresh: true,
+        },
       });
 
-      timeline.to(".project-track", {
+      timeline.to(trackRef.current, {
         x: -trackScrollDistance,
-        ease: "none"
+        ease: "none",
       });
     };
 
-    // Small delay to ensure styles are applied before calculating metrics
-    const timer = setTimeout(setupPin, 100);
+    const timer = window.setTimeout(setupPin, 150);
+    window.addEventListener("resize", setupPin);
 
     return () => {
-      clearTimeout(timer);
-      ScrollTrigger.getAll().forEach(t => t.kill());
+      window.clearTimeout(timer);
+      window.removeEventListener("resize", setupPin);
+      timeline?.scrollTrigger?.kill();
+      timeline?.kill();
     };
   }, []);
 
   return (
     <section className="projects-section bg-surface-dark text-on-dark overflow-hidden flex items-center" ref={containerRef} id="projects">
-      <div className="absolute top-16 left-24 z-10">
-        <h2 className="text-display-lg text-on-dark mb-4">Featured<br/><span className="text-primary italic">Projects</span></h2>
-        <p className="font-mono text-sm uppercase text-on-dark-soft tracking-wider">Scroll to explore →</p>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(204,120,92,0.16),transparent_24%),linear-gradient(90deg,rgba(24,23,21,1)_0%,rgba(24,23,21,0.6)_38%,rgba(24,23,21,1)_100%)]" />
+      <div className="project-rail-heading">
+        <p className="font-mono text-xs uppercase text-primary tracking-[0.26em] mb-4">Selected Systems</p>
+        <h2 className="font-display text-5xl md:text-7xl leading-[0.9] text-on-dark">
+          Featured<br /><span className="text-primary italic">Projects</span>
+        </h2>
+        <p className="font-mono text-xs uppercase text-on-dark-soft tracking-[0.24em] mt-6">Scroll to explore →</p>
       </div>
-      
-      <div className="project-track" ref={trackRef} style={{ paddingTop: '20vh' }}>
-        {projects.map((proj, i) => (
-          <div key={i} className="project-card justify-center gap-8">
-            <div className="font-mono text-primary text-xl uppercase">Project {(i + 1).toString().padStart(2, '0')}</div>
-            <h3 className="text-3xl font-display font-medium leading-tight">{proj.title}</h3>
-            
-            <div className="space-y-4">
-              <p className="font-sans font-medium text-white/90">{proj.position}</p>
-              <p className="text-on-dark-soft leading-relaxed">{proj.desc}</p>
-            </div>
-            
-            <div className="flex flex-wrap gap-2 mt-4">
-              {proj.tags.map((tag, j) => (
-                <span key={j} className="font-mono text-xs text-on-dark bg-surface-dark-elevated px-3 py-1 rounded-full border border-surface-dark-soft">
-                  {tag}
-                </span>
-              ))}
-            </div>
 
-            <div className="flex gap-4 mt-8">
-              {proj.href && (
-                <a href={proj.href} target="_blank" rel="noreferrer" className="text-primary hover:text-primary-active font-medium flex items-center gap-2">
-                  GitHub ↗
-                </a>
-              )}
-              {proj.demo && (
-                <a href={proj.demo} target="_blank" rel="noreferrer" className="text-primary hover:text-primary-active font-medium flex items-center gap-2">
-                  Live Demo ↗
-                </a>
-              )}
+      <div className="project-track" ref={trackRef}>
+        <div className="project-spacer" />
+        {projects.map((proj, i) => (
+          <article key={proj.title} className="project-card">
+            <div className="project-card-inner">
+              <div className="project-meta">
+                <span>Project {String(i + 1).padStart(2, "0")}</span>
+                <span>{proj.position}</span>
+              </div>
+
+              <ProjectVisual type={proj.visual} />
+
+              <div>
+                <h3 className="font-display text-4xl md:text-5xl leading-[0.95] text-on-dark mb-5">{proj.title}</h3>
+                <p className="text-on-dark-soft leading-relaxed max-w-[520px]">{proj.desc}</p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {proj.tags.map((tag) => (
+                  <span key={tag} className="dark-badge">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
+              <div className="flex gap-5 font-mono text-xs uppercase tracking-[0.18em]">
+                {proj.href && (
+                  <a href={proj.href} target="_blank" rel="noreferrer" className="text-primary hover:text-primary-active">
+                    GitHub ↗
+                  </a>
+                )}
+                {proj.demo && (
+                  <a href={proj.demo} target="_blank" rel="noreferrer" className="text-primary hover:text-primary-active">
+                    Live Demo ↗
+                  </a>
+                )}
+              </div>
             </div>
-          </div>
+          </article>
         ))}
-        {/* Final end block to signal completion */}
-        <div className="flex-shrink-0 w-[400px] flex items-center justify-center p-20 border-r border-hairline/20">
-          <div className="text-center">
-            <h3 className="font-display text-3xl mb-6">Let's build something.</h3>
-            <button className="bg-primary text-on-primary rounded-full px-8 py-3 w-full hover:bg-primary-active transition-colors">
-              Contact Me
-            </button>
-          </div>
+
+        <div className="project-end">
+          <p className="font-mono text-xs uppercase tracking-[0.26em] text-primary mb-5">Next</p>
+          <h3 className="font-display text-5xl leading-none mb-8">Let's build<br />AI systems.</h3>
+          <a href="#contact" className="btn-primary">Contact</a>
         </div>
       </div>
     </section>
