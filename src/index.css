@@ -59,7 +59,80 @@
   }
 }
 
-/* 3D Character Styles */
+/* Hero Video Layer */
+.hero-video-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+  overflow: hidden;
+  --hero-video-x: 0px;
+  --hero-video-y: 0px;
+  transform: translate3d(0, 0, 0);
+  transform-origin: center center;
+}
+.hero-video-layer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background:
+    radial-gradient(ellipse at 50% 47%, transparent 0%, transparent 58%, rgba(24, 23, 21, 0.2) 75%, rgba(24, 23, 21, 0.76) 100%),
+    linear-gradient(90deg, rgba(24, 23, 21, 0.78) 0%, rgba(24, 23, 21, 0.18) 15%, transparent 31%, transparent 69%, rgba(24, 23, 21, 0.18) 85%, rgba(24, 23, 21, 0.78) 100%),
+    linear-gradient(180deg, rgba(24, 23, 21, 0.28) 0%, transparent 24%, transparent 72%, rgba(24, 23, 21, 0.36) 100%);
+}
+.hero-video-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background:
+    linear-gradient(180deg, transparent 0%, transparent 74%, rgba(24, 23, 21, 0.3) 88%, rgba(24, 23, 21, 0.9) 100%),
+    radial-gradient(ellipse at 50% 106%, rgba(24, 23, 21, 0.78) 0%, rgba(24, 23, 21, 0.42) 32%, transparent 66%);
+}
+.hero-video,
+.hero-video-poster {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(105vw, 1800px);
+  max-width: none;
+  height: auto;
+  transform: translate(calc(-50% + var(--hero-video-x)), calc(-43% + var(--hero-video-y)));
+  user-select: none;
+  -webkit-user-drag: none;
+  will-change: transform;
+  filter: saturate(0.98) contrast(1.03);
+  mask-image: radial-gradient(ellipse at center, #000 0%, #000 74%, rgba(0, 0, 0, 0.72) 86%, transparent 96%);
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 0%, #000 74%, rgba(0, 0, 0, 0.72) 86%, transparent 96%);
+}
+.hero-video {
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+.hero-video.is-ready {
+  opacity: 1;
+}
+.hero-video-poster {
+  z-index: 1;
+  opacity: 0.96;
+}
+@media (max-width: 1024px) {
+  .hero-video,
+  .hero-video-poster {
+    width: 110vw;
+    transform: translate(-50%, -43%);
+    opacity: 0.2;
+  }
+}
+@media (max-width: 768px), (prefers-reduced-motion: reduce) {
+  .hero-video {
+    display: none;
+  }
+}
+
+/* Legacy 3D Character Styles */
 .character-container {
   position: fixed;
   inset: 0;

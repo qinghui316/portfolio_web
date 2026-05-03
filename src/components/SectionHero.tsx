@@ -1,10 +1,12 @@
 import { Github, Mail, FileText, ArrowDown, Sparkles } from 'lucide-react';
+import HeroVideoLayer from './HeroVideoLayer';
 
 export default function SectionHero() {
   return (
     <section className="hero-section min-h-screen w-full relative overflow-hidden flex items-center bg-surface-dark text-on-dark">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(204,120,92,0.22),transparent_34%),radial-gradient(circle_at_88%_18%,rgba(93,184,166,0.12),transparent_26%),linear-gradient(180deg,#181715_0%,#1f1e1b_54%,#181715_100%)]" />
       <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-surface-dark via-surface-dark/70 to-transparent" />
+      <HeroVideoLayer />
 
       <nav className="absolute top-0 w-full px-6 py-6 md:px-8 flex justify-between items-center z-50 pointer-events-auto text-on-dark">
         <div className="font-display text-2xl md:text-3xl font-medium">刘晖洋</div>

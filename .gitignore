@@ -6,3 +6,14 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Local source/export media. Keep production videos on OSS/CDN.
+*.mp4
+Video1.mp4
+video1高清放大.mp4
+首帧.jpg
+中间帧.jpg
+尾帧.jpg
+media-export/
+oss-upload/
+public/media/

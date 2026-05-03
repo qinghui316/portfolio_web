@@ -13,7 +13,6 @@ import SectionWhatIDo from './components/SectionWhatIDo';
 import SectionExperience from './components/SectionExperience';
 import SectionContact from './components/SectionContact';
 
-const Character3D = lazy(() => import('./components/Character3D'));
 const SectionProjects = lazy(() => import('./components/SectionProjects'));
 
 export default function App() {
@@ -72,9 +71,6 @@ export default function App() {
       {!isLoading && (
         <>
           <Cursor />
-          <Suspense fallback={null}>
-            <Character3D />
-          </Suspense>
           
           <main id="main" className="relative group">
             <SectionHero />
