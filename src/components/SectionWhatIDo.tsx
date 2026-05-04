@@ -50,7 +50,8 @@ export default function SectionWhatIDo() {
 
   return (
     <section className="what-i-do-section min-h-screen relative flex items-center text-on-dark py-24 overflow-hidden bg-surface-dark" id="what-i-do">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(204,120,92,0.2),transparent_28%),radial-gradient(circle_at_88%_78%,rgba(93,184,166,0.09),transparent_24%),linear-gradient(180deg,#181715_0%,#151411_100%)]" />
+      <div className="what-i-do-atmosphere" aria-hidden="true" />
+      <div className="what-i-do-grain" aria-hidden="true" />
       <div className="what-i-do-inner max-w-[1580px] w-full mx-auto px-6 md:px-16 xl:px-24 grid lg:grid-cols-[0.86fr_1.14fr] gap-12 items-center relative z-20">
         <div className="what-visual-column">
           <div className="what-visual-copy">

@@ -162,9 +162,21 @@
 }
 .narrative-video-layer[data-mode="dwell"]::before {
   background:
-    radial-gradient(ellipse at 28% 49%, transparent 0%, transparent 50%, rgba(24, 23, 21, 0.2) 72%, rgba(24, 23, 21, 0.72) 100%),
-    linear-gradient(90deg, rgba(24, 23, 21, 0.1) 0%, transparent 22%, transparent 46%, rgba(24, 23, 21, 0.58) 58%, rgba(24, 23, 21, 0.96) 100%),
-    linear-gradient(180deg, rgba(24, 23, 21, 0.18) 0%, transparent 28%, transparent 70%, rgba(24, 23, 21, 0.82) 100%);
+    radial-gradient(ellipse at 26% 48%, transparent 0%, transparent 48%, rgba(6, 9, 7, 0.18) 70%, rgba(6, 9, 7, 0.7) 100%),
+    linear-gradient(90deg, rgba(6, 9, 7, 0.06) 0%, transparent 24%, rgba(7, 10, 8, 0.06) 42%, rgba(7, 10, 8, 0.46) 62%, rgba(7, 9, 8, 0.92) 100%),
+    linear-gradient(180deg, rgba(7, 9, 8, 0.96) 0%, rgba(7, 9, 8, 0.54) 13%, transparent 24%, transparent 68%, rgba(7, 9, 8, 0.86) 100%);
+}
+.narrative-video-layer[data-mode="dwell"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 22% 38%, rgba(250, 249, 245, 0.018), transparent 38%),
+    repeating-radial-gradient(circle at 18% 32%, rgba(250, 249, 245, 0.018) 0 1px, transparent 1px 5px);
+  mix-blend-mode: soft-light;
+  opacity: 0.32;
 }
 .narrative-video-poster,
 .narrative-video {
@@ -202,12 +214,20 @@
   position: absolute;
   inset: 0;
   z-index: 4;
-  background: rgba(24, 23, 21, var(--narrative-shade, 0));
+  background: rgba(6, 9, 7, var(--narrative-shade, 0));
 }
 
 /* Deep narrative About + work video */
 .about-section {
   border-top: 1px solid rgba(250, 249, 245, 0.08);
+}
+.about-section::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 26vh;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(24, 23, 21, 0) 0%, rgba(9, 12, 9, 0.56) 72%, rgba(7, 9, 7, 0.92) 100%);
 }
 .about-process {
   position: relative;
@@ -246,6 +266,37 @@
   display: flex;
   align-items: flex-end;
 }
+.what-i-do-section {
+  background: #070907;
+}
+.what-i-do-atmosphere {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 17% 42%, rgba(204, 120, 92, 0.12), transparent 28%),
+    radial-gradient(ellipse at 45% 46%, rgba(93, 184, 166, 0.055), transparent 30%),
+    radial-gradient(ellipse at 88% 80%, rgba(204, 120, 92, 0.05), transparent 26%),
+    linear-gradient(90deg, #070907 0%, #080b08 38%, #090a08 62%, #0c0d0a 100%),
+    linear-gradient(180deg, #0c0f0b 0%, #070907 46%, #080907 100%);
+}
+.what-i-do-atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(7, 9, 7, 0.08) 0%, rgba(7, 9, 7, 0.22) 42%, rgba(7, 9, 7, 0.54) 58%, rgba(7, 9, 7, 0.9) 100%),
+    radial-gradient(ellipse at 54% 48%, transparent 0%, rgba(7, 9, 7, 0.18) 56%, rgba(7, 9, 7, 0.7) 100%);
+}
+.what-i-do-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.2;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  background:
+    repeating-radial-gradient(circle at 12% 18%, rgba(250, 249, 245, 0.045) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(250, 249, 245, 0.018) 0 1px, transparent 1px 7px);
+}
 .what-i-do-inner {
   min-height: 100vh;
   align-content: center;
@@ -264,6 +315,16 @@
   z-index: 8;
   justify-self: end;
   width: min(760px, 100%);
+}
+.what-grid::before {
+  content: "";
+  position: absolute;
+  inset: -7vh -6vw -7vh -5vw;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 34% 48%, rgba(250, 249, 245, 0.035), transparent 38%),
+    linear-gradient(90deg, rgba(7, 9, 7, 0.32) 0%, rgba(7, 9, 7, 0.56) 42%, rgba(7, 9, 7, 0.82) 100%);
 }
 @media (max-width: 1024px) {
   .about-process {
@@ -606,7 +667,9 @@
   position: relative;
   min-height: 112px;
   border: 1px dashed rgba(250, 249, 245, 0.18);
-  background: rgba(250, 249, 245, 0.035);
+  background:
+    linear-gradient(135deg, rgba(250, 249, 245, 0.025), rgba(250, 249, 245, 0.008)),
+    rgba(7, 10, 8, 0.56);
   padding: 20px 56px 20px 24px;
   overflow: hidden;
   outline: none;
@@ -617,10 +680,12 @@
 .what-panel.is-expanded {
   grid-column: 1 / -1;
   min-height: clamp(214px, 25vh, 252px);
-  background: rgba(204, 120, 92, 0.08);
+  background:
+    linear-gradient(135deg, rgba(204, 120, 92, 0.055), rgba(250, 249, 245, 0.012)),
+    rgba(8, 10, 8, 0.72);
   border-color: rgba(204, 120, 92, 0.48);
   transform: translateY(-3px);
-  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 36px rgba(204, 120, 92, 0.045), 0 18px 46px rgba(0, 0, 0, 0.24);
 }
 .what-panel-head {
   display: grid;
