@@ -20,13 +20,21 @@ type VideoWithFrameCallback = HTMLVideoElement & {
 
 const waitForVideoFrame = (video: HTMLVideoElement) =>
   new Promise<void>((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      resolve();
+    };
+    const timeoutId = window.setTimeout(finish, 160);
     const frameVideo = video as VideoWithFrameCallback;
     if (frameVideo.requestVideoFrameCallback) {
-      frameVideo.requestVideoFrameCallback(() => resolve());
+      frameVideo.requestVideoFrameCallback(finish);
       return;
     }
 
-    requestAnimationFrame(() => resolve());
+    requestAnimationFrame(finish);
   });
 
 const seekTo = (video: HTMLVideoElement, time: number) =>
@@ -74,6 +82,7 @@ export default function HeroVideoLayer({ onWarmupProgress, onWarmupComplete }: H
   const [posterUrl, setPosterUrl] = useState(initialUrls.heroPosterUrl);
   const [videoUrl, setVideoUrl] = useState(initialUrls.heroVideoUrl);
   const warmedUrlRef = useRef('');
+  const warmupAttemptRef = useRef(0);
 
   useEffect(() => {
     const layer = layerRef.current;
@@ -126,6 +135,8 @@ export default function HeroVideoLayer({ onWarmupProgress, onWarmupComplete }: H
 
   const runWarmup = async (video: HTMLVideoElement) => {
     if (!videoUrl || warmedUrlRef.current === videoUrl) return;
+    const warmupAttempt = warmupAttemptRef.current + 1;
+    warmupAttemptRef.current = warmupAttempt;
     if (!isDesktopMotionAllowed()) {
       setCanShowVideo(true);
       warmedUrlRef.current = videoUrl;
@@ -139,6 +150,12 @@ export default function HeroVideoLayer({ onWarmupProgress, onWarmupComplete }: H
     warmedUrlRef.current = videoUrl;
     setCanShowVideo(false);
     onWarmupProgress?.(0);
+    const releaseTimer = window.setTimeout(() => {
+      if (warmupAttemptRef.current !== warmupAttempt) return;
+      video.pause();
+      setCanShowVideo(true);
+      onWarmupComplete?.();
+    }, 3600);
 
     const safeEnd = Math.max(0, duration - 1 / 24);
     const points = [
@@ -152,14 +169,17 @@ export default function HeroVideoLayer({ onWarmupProgress, onWarmupComplete }: H
 
     try {
       for (let index = 0; index < points.length; index += 1) {
+        if (warmupAttemptRef.current !== warmupAttempt) return;
         await seekTo(video, Math.min(safeEnd, Math.max(0, points[index])));
         onWarmupProgress?.((index + 1) / points.length);
       }
 
+      window.clearTimeout(releaseTimer);
       video.pause();
       setCanShowVideo(true);
       onWarmupComplete?.();
     } catch {
+      window.clearTimeout(releaseTimer);
       warmedUrlRef.current = '';
       handleVideoError();
     }
@@ -171,11 +191,13 @@ export default function HeroVideoLayer({ onWarmupProgress, onWarmupComplete }: H
       setCanShowVideo(false);
       setVideoFailed(false);
       warmedUrlRef.current = '';
+      warmupAttemptRef.current += 1;
       setVideoUrl(nextUrl);
       return;
     }
 
     setVideoFailed(true);
+    setCanShowVideo(false);
     onWarmupComplete?.();
   };
 
