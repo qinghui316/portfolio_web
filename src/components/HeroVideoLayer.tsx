@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 const LOCAL_POSTER = '/media/hero/hero-poster.webp';
-const LOCAL_DEV_SCRUB_2K_VIDEO = '/media/hero/hero-look-scrub-2k.mp4?v=two-source-no-anchor';
-const LOCAL_DEV_SCRUB_1080_VIDEO = '/media/hero/hero-look-scrub-1080.mp4?v=two-source-no-anchor';
+const LOCAL_SCRUB_2K_VIDEO = '/media/hero/hero-look-scrub-2k.mp4?v=two-source-no-anchor';
+const LOCAL_SCRUB_1080_VIDEO = '/media/hero/hero-look-scrub-1080.mp4?v=two-source-no-anchor';
 const CENTER_DEAD_ZONE = 0.03;
 const SEEK_INTERVAL_MS = 1000 / 30;
 
@@ -42,7 +42,7 @@ export default function HeroVideoLayer() {
       ? import.meta.env.VITE_HERO_LOOK_SCRUB_2K_URL || import.meta.env.VITE_HERO_LOOK_SCRUB_1080_URL
       : import.meta.env.VITE_HERO_LOOK_SCRUB_1080_URL || import.meta.env.VITE_HERO_LOOK_SCRUB_2K_URL;
 
-    return source || (import.meta.env.DEV ? (shouldUse2KVideo() ? LOCAL_DEV_SCRUB_2K_VIDEO : LOCAL_DEV_SCRUB_1080_VIDEO) : '');
+    return source || (shouldUse2KVideo() ? LOCAL_SCRUB_2K_VIDEO : LOCAL_SCRUB_1080_VIDEO);
   }, []);
 
   useEffect(() => {

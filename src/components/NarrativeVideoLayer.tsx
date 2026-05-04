@@ -5,8 +5,8 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 gsap.registerPlugin(ScrollTrigger);
 
 const LOCAL_POSTER = '/media/scroll/scroll-work-poster.webp';
-const LOCAL_DEV_2K_VIDEO = '/media/scroll/scroll-work-2k.mp4?v=scroll-work-v1';
-const LOCAL_DEV_1080_VIDEO = '/media/scroll/scroll-work-1080.mp4?v=scroll-work-v1';
+const LOCAL_2K_VIDEO = '/media/scroll/scroll-work-2k.mp4?v=scroll-work-v1';
+const LOCAL_1080_VIDEO = '/media/scroll/scroll-work-1080.mp4?v=scroll-work-v1';
 const SEEK_INTERVAL_MS = 1000 / 30;
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
@@ -244,7 +244,7 @@ export default function NarrativeVideoLayer() {
       ? import.meta.env.VITE_SCROLL_WORK_VIDEO_2K_URL || import.meta.env.VITE_SCROLL_WORK_VIDEO_1080_URL
       : import.meta.env.VITE_SCROLL_WORK_VIDEO_1080_URL || import.meta.env.VITE_SCROLL_WORK_VIDEO_2K_URL;
 
-    return source || (import.meta.env.DEV ? (shouldUse2KVideo() ? LOCAL_DEV_2K_VIDEO : LOCAL_DEV_1080_VIDEO) : '');
+    return source || (shouldUse2KVideo() ? LOCAL_2K_VIDEO : LOCAL_1080_VIDEO);
   }, [canUseMotion]);
 
   useEffect(() => {
