@@ -7,6 +7,7 @@ import { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import Lenis from 'lenis';
 import Cursor from './components/Cursor';
 import Loading from './components/Loading';
+import NarrativeVideoLayer from './components/NarrativeVideoLayer';
 import SectionHero from './components/SectionHero';
 import SectionAbout from './components/SectionAbout';
 import SectionWhatIDo from './components/SectionWhatIDo';
@@ -21,6 +22,11 @@ export default function App() {
   const frameRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+    window.scrollTo(0, 0);
+
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     if (mediaQuery.matches) return;
 
@@ -34,6 +40,7 @@ export default function App() {
     });
 
     lenisRef.current = lenis;
+    (window as Window & { __portfolioLenis?: Lenis }).__portfolioLenis = lenis;
     lenis.stop();
 
     function raf(time: number) {
@@ -46,6 +53,7 @@ export default function App() {
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
       lenis.destroy();
       lenisRef.current = null;
+      delete (window as Window & { __portfolioLenis?: Lenis }).__portfolioLenis;
     };
   }, []);
 
@@ -73,6 +81,7 @@ export default function App() {
           <Cursor />
           
           <main id="main" className="relative group">
+            <NarrativeVideoLayer />
             <SectionHero />
             <SectionAbout />
             <SectionWhatIDo />

@@ -33,7 +33,8 @@ export default function SectionExperience() {
   ];
 
   return (
-    <section className="bg-canvas py-32 relative text-ink z-20 overflow-hidden">
+    <section id="experience" className="experience-section bg-canvas py-32 relative text-ink z-20 overflow-hidden">
+      <div className="experience-top-fade" aria-hidden="true" />
       <div className="absolute inset-x-0 top-0 h-px bg-hairline" />
       <div className="max-w-[1200px] mx-auto px-6 md:px-12">
         <div className="text-center">

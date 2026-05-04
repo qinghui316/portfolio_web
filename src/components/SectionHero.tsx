@@ -8,7 +8,7 @@ export default function SectionHero() {
       <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-surface-dark via-surface-dark/70 to-transparent" />
       <HeroVideoLayer />
 
-      <nav className="absolute top-0 w-full px-6 py-6 md:px-8 flex justify-between items-center z-50 pointer-events-auto text-on-dark">
+      <nav className="hero-chrome absolute top-0 w-full px-6 py-6 md:px-8 flex justify-between items-center z-50 pointer-events-auto text-on-dark">
         <div className="font-display text-2xl md:text-3xl font-medium">刘晖洋</div>
         <div className="hidden lg:block font-mono text-xs text-on-dark-soft">AI PRODUCT / AIGC / AGENT</div>
         <div className="flex gap-6 md:gap-8 font-mono text-[11px] uppercase tracking-[0.24em] text-on-dark-soft">
@@ -18,7 +18,7 @@ export default function SectionHero() {
         </div>
       </nav>
 
-      <div className="absolute left-6 md:left-8 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-6 z-50 pointer-events-auto text-on-dark-soft">
+      <div className="hero-chrome absolute left-6 md:left-8 top-1/2 -translate-y-1/2 hidden md:flex flex-col gap-6 z-50 pointer-events-auto text-on-dark-soft">
         <a href="https://github.com/qinghui316/moonaigc" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors" aria-label="GitHub">
           <Github size={20} />
         </a>
@@ -31,7 +31,7 @@ export default function SectionHero() {
         </a>
       </div>
 
-      <a href="#" className="absolute right-6 md:right-8 bottom-8 flex items-center gap-2 font-mono text-xs uppercase tracking-[0.24em] z-50 pointer-events-auto text-on-dark-soft hover:text-primary transition-colors">
+      <a href="#" className="hero-chrome absolute right-6 md:right-8 bottom-8 flex items-center gap-2 font-mono text-xs uppercase tracking-[0.24em] z-50 pointer-events-auto text-on-dark-soft hover:text-primary transition-colors">
         Resume <FileText size={16} />
       </a>
 
@@ -70,7 +70,7 @@ export default function SectionHero() {
         </div>
       </div>
 
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 hidden md:flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.24em] text-on-dark-soft z-30">
+      <div className="hero-chrome absolute bottom-8 left-1/2 -translate-x-1/2 hidden md:flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.24em] text-on-dark-soft z-30">
         Scroll <ArrowDown size={14} />
       </div>
     </section>

@@ -4,6 +4,8 @@ dist/
 coverage/
 .DS_Store
 *.log
+.playwright-mcp/
+red1-hero.png
 .env*
 !.env.example
 
@@ -22,3 +24,8 @@ public/media/hero/*
 !public/media/hero/hero-look-scrub-2k.mp4
 !public/media/hero/hero-look-scrub-1080.mp4
 !public/media/hero/hero-poster.webp
+!public/media/scroll/
+public/media/scroll/*
+!public/media/scroll/scroll-work-2k.mp4
+!public/media/scroll/scroll-work-1080.mp4
+!public/media/scroll/scroll-work-poster.webp
