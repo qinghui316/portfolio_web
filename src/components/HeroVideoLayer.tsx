@@ -1,49 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  getInitialPortfolioVideoUrls,
+  getNextCandidateUrl,
+  getPortfolioVideoManifest,
+  isDesktopMotionAllowed,
+} from '../lib/videoResources';
 
-const LOCAL_POSTER = '/media/hero/hero-poster.webp';
-const LOCAL_SCRUB_2K_VIDEO = '/media/hero/hero-look-scrub-2k.mp4?v=two-source-no-anchor';
-const LOCAL_SCRUB_1080_VIDEO = '/media/hero/hero-look-scrub-1080.mp4?v=two-source-no-anchor';
 const CENTER_DEAD_ZONE = 0.03;
 const SEEK_INTERVAL_MS = 1000 / 30;
-
-const isDesktopMotionAllowed = () => {
-  if (typeof window === 'undefined') return false;
-  return (
-    window.matchMedia('(min-width: 768px)').matches &&
-    window.matchMedia('(pointer: fine)').matches &&
-    !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
-};
-
-const shouldUse2KVideo = () => {
-  if (typeof window === 'undefined') return false;
-  const connection = (navigator as Navigator & {
-    connection?: { saveData?: boolean; effectiveType?: string };
-  }).connection;
-
-  if (connection?.saveData) return false;
-  if (connection?.effectiveType && ['slow-2g', '2g', '3g'].includes(connection.effectiveType)) return false;
-
-  return window.innerWidth >= 1280 && window.devicePixelRatio <= 2;
-};
 
 export default function HeroVideoLayer() {
   const layerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [canShowVideo, setCanShowVideo] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
-
-  const posterUrl = import.meta.env.VITE_HERO_POSTER_URL || LOCAL_POSTER;
-  const videoUrl = useMemo(() => {
-    const desktopAllowed = typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
-    if (!desktopAllowed || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return '';
-
-    const source = shouldUse2KVideo()
-      ? import.meta.env.VITE_HERO_LOOK_SCRUB_2K_URL || import.meta.env.VITE_HERO_LOOK_SCRUB_1080_URL
-      : import.meta.env.VITE_HERO_LOOK_SCRUB_1080_URL || import.meta.env.VITE_HERO_LOOK_SCRUB_2K_URL;
-
-    return source || (shouldUse2KVideo() ? LOCAL_SCRUB_2K_VIDEO : LOCAL_SCRUB_1080_VIDEO);
-  }, []);
+  const manifest = useMemo(() => getPortfolioVideoManifest(), []);
+  const initialUrls = useMemo(() => getInitialPortfolioVideoUrls(), []);
+  const [posterUrl, setPosterUrl] = useState(initialUrls.heroPosterUrl);
+  const [videoUrl, setVideoUrl] = useState(initialUrls.heroVideoUrl);
 
   useEffect(() => {
     const layer = layerRef.current;
@@ -94,6 +68,18 @@ export default function HeroVideoLayer() {
     video.pause();
   }, [videoUrl]);
 
+  const handleVideoError = () => {
+    const nextUrl = getNextCandidateUrl(manifest.heroVideo, videoUrl);
+    if (nextUrl) {
+      setCanShowVideo(false);
+      setVideoFailed(false);
+      setVideoUrl(nextUrl);
+      return;
+    }
+
+    setVideoFailed(true);
+  };
+
   return (
     <div
       ref={layerRef}
@@ -101,7 +87,15 @@ export default function HeroVideoLayer() {
       onContextMenu={(event) => event.preventDefault()}
       aria-hidden="true"
     >
-      <img className="hero-video-poster" src={posterUrl} alt="" draggable={false} />
+      <img
+        className="hero-video-poster"
+        src={posterUrl}
+        alt=""
+        draggable={false}
+        onError={() => {
+          if (posterUrl !== manifest.heroPoster.fallbackUrl) setPosterUrl(manifest.heroPoster.fallbackUrl);
+        }}
+      />
 
       {videoUrl && !videoFailed && (
         <video
@@ -122,7 +116,7 @@ export default function HeroVideoLayer() {
             videoRef.current?.pause();
             setCanShowVideo(true);
           }}
-          onError={() => setVideoFailed(true)}
+          onError={handleVideoError}
           onContextMenu={(event) => event.preventDefault()}
         />
       )}

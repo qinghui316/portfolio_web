@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import {
+  getInitialPortfolioVideoUrls,
+  getNextCandidateUrl,
+  getPortfolioVideoManifest,
+  isDesktopMotionAllowed,
+} from '../lib/videoResources';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const LOCAL_POSTER = '/media/scroll/scroll-work-poster.webp';
-const LOCAL_2K_VIDEO = '/media/scroll/scroll-work-2k.mp4?v=scroll-work-v1';
-const LOCAL_1080_VIDEO = '/media/scroll/scroll-work-1080.mp4?v=scroll-work-v1';
 const SEEK_INTERVAL_MS = 1000 / 30;
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
@@ -17,27 +20,6 @@ const smoothstep = (edge0: number, edge1: number, value: number) => {
 };
 
 const lerp = (from: number, to: number, amount: number) => from + (to - from) * amount;
-
-const isDesktopMotionAllowed = () => {
-  if (typeof window === 'undefined') return false;
-  return (
-    window.matchMedia('(min-width: 768px)').matches &&
-    window.matchMedia('(pointer: fine)').matches &&
-    !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
-};
-
-const shouldUse2KVideo = () => {
-  if (typeof window === 'undefined') return false;
-  const connection = (navigator as Navigator & {
-    connection?: { saveData?: boolean; effectiveType?: string };
-  }).connection;
-
-  if (connection?.saveData) return false;
-  if (connection?.effectiveType && ['slow-2g', '2g', '3g'].includes(connection.effectiveType)) return false;
-
-  return window.innerWidth >= 1280 && window.devicePixelRatio <= 2;
-};
 
 type NarrativeState = {
   time: number;
@@ -235,17 +217,10 @@ export default function NarrativeVideoLayer() {
   const [canUseMotion, setCanUseMotion] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
-
-  const posterUrl = import.meta.env.VITE_SCROLL_WORK_POSTER_URL || LOCAL_POSTER;
-  const videoUrl = useMemo(() => {
-    if (typeof window === 'undefined' || !canUseMotion) return '';
-
-    const source = shouldUse2KVideo()
-      ? import.meta.env.VITE_SCROLL_WORK_VIDEO_2K_URL || import.meta.env.VITE_SCROLL_WORK_VIDEO_1080_URL
-      : import.meta.env.VITE_SCROLL_WORK_VIDEO_1080_URL || import.meta.env.VITE_SCROLL_WORK_VIDEO_2K_URL;
-
-    return source || (shouldUse2KVideo() ? LOCAL_2K_VIDEO : LOCAL_1080_VIDEO);
-  }, [canUseMotion]);
+  const manifest = useMemo(() => getPortfolioVideoManifest(), []);
+  const initialUrls = useMemo(() => getInitialPortfolioVideoUrls(), []);
+  const [posterUrl, setPosterUrl] = useState(initialUrls.scrollPosterUrl);
+  const [videoUrl, setVideoUrl] = useState(initialUrls.scrollVideoUrl);
 
   useEffect(() => {
     const updateMode = () => setCanUseMotion(isDesktopMotionAllowed());
@@ -258,8 +233,17 @@ export default function NarrativeVideoLayer() {
     ];
 
     queries.forEach((query) => query.addEventListener('change', updateMode));
-    return () => queries.forEach((query) => query.removeEventListener('change', updateMode));
+      return () => queries.forEach((query) => query.removeEventListener('change', updateMode));
   }, []);
+
+  useEffect(() => {
+    if (!canUseMotion) {
+      setVideoUrl('');
+      return;
+    }
+
+    setVideoUrl((currentUrl) => currentUrl || getInitialPortfolioVideoUrls().scrollVideoUrl);
+  }, [canUseMotion]);
 
   useEffect(() => {
     const layer = layerRef.current;
@@ -452,11 +436,31 @@ export default function NarrativeVideoLayer() {
     };
   }, [canUseMotion, videoUrl, videoFailed]);
 
+  const handleVideoError = () => {
+    const nextUrl = getNextCandidateUrl(manifest.scrollVideo, videoUrl);
+    if (nextUrl) {
+      setVideoReady(false);
+      setVideoFailed(false);
+      setVideoUrl(nextUrl);
+      return;
+    }
+
+    setVideoFailed(true);
+  };
+
   if (!canUseMotion) return null;
 
   return (
     <div ref={layerRef} className={`narrative-video-layer ${videoReady ? 'has-video' : ''}`} aria-hidden="true">
-      <img className="narrative-video-poster" src={posterUrl} alt="" draggable={false} />
+      <img
+        className="narrative-video-poster"
+        src={posterUrl}
+        alt=""
+        draggable={false}
+        onError={() => {
+          if (posterUrl !== manifest.scrollPoster.fallbackUrl) setPosterUrl(manifest.scrollPoster.fallbackUrl);
+        }}
+      />
       {videoUrl && !videoFailed && (
         <video
           ref={videoRef}
@@ -479,7 +483,7 @@ export default function NarrativeVideoLayer() {
             setVideoReady(true);
             ScrollTrigger.refresh();
           }}
-          onError={() => setVideoFailed(true)}
+          onError={handleVideoError}
           onContextMenu={(event) => event.preventDefault()}
         />
       )}
