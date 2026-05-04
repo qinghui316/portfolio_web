@@ -93,7 +93,7 @@ export default function SectionProjects() {
     {
       title: "MoonAI 短剧 Agent 工作台",
       href: "https://github.com/qinghui316/moonaigc",
-      demo: "http://43.167.184.248:6402/",
+      demo: "https://moonai.asia/",
       position: "AI 短剧创作平台 / 个人独立全栈开发并部署上线",
       desc: "从剧本改编、镜头语言、分镜生成、参考图匹配到视频合成，串起完整 AI 创作链路。",
       tags: ["React+TS", "Node.js", "Prisma", "PostgreSQL", "JWT", "FFmpeg"],
@@ -203,10 +203,18 @@ export default function SectionProjects() {
 
               <ProjectVisual type={proj.visual} />
 
-              <div>
-                <h3 className="font-display text-4xl md:text-5xl leading-[0.95] text-on-dark mb-5">{proj.title}</h3>
-                <p className="text-on-dark-soft leading-relaxed max-w-[520px]">{proj.desc}</p>
-              </div>
+                <div>
+                  <h3 className="font-display text-4xl md:text-5xl leading-[0.95] text-on-dark mb-5">
+                    {proj.demo ? (
+                      <a href={proj.demo} target="_blank" rel="noreferrer" className="transition-colors hover:text-primary">
+                        {proj.title}
+                      </a>
+                    ) : (
+                      proj.title
+                    )}
+                  </h3>
+                  <p className="text-on-dark-soft leading-relaxed max-w-[520px]">{proj.desc}</p>
+                </div>
 
               <div className="flex flex-wrap gap-2">
                 {proj.tags.map((tag) => (

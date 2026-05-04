@@ -802,6 +802,65 @@
 .experience-section {
   isolation: isolate;
 }
+.experience-timeline {
+  --timeline-progress: 0;
+}
+.experience-timeline-line {
+  left: 50%;
+  width: 3px;
+  transform: translateX(-50%);
+  overflow: visible;
+  border-radius: 999px;
+  background: linear-gradient(180deg, transparent 0%, rgba(204, 120, 92, 0.2) 14%, rgba(204, 120, 92, 0.24) 86%, transparent 100%);
+}
+.experience-timeline-line::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 3px;
+  height: calc(var(--timeline-progress, 0) * 100%);
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(204, 120, 92, 0.2), rgba(204, 120, 92, 0.74));
+  box-shadow: 0 0 16px rgba(204, 120, 92, 0.18);
+}
+.experience-progress-orb {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--timeline-progress, 0) * 100%);
+  z-index: 3;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(204, 120, 92, 0.42) 0%, rgba(204, 120, 92, 0.18) 42%, transparent 72%);
+  box-shadow: 0 0 34px rgba(204, 120, 92, 0.24);
+  opacity: calc(0.24 + var(--timeline-progress, 0) * 0.52);
+}
+.experience-item {
+  --item-progress: 0;
+}
+.experience-copy {
+  opacity: calc(0.64 + var(--item-progress, 0) * 0.36);
+  transform: translateY(calc((1 - var(--item-progress, 0)) * 14px));
+  transition: opacity 180ms linear, transform 180ms linear;
+}
+.experience-period {
+  color: color-mix(in srgb, rgba(20, 20, 19, 0.2), rgba(20, 20, 19, 0.48) calc(var(--item-progress, 0) * 100%));
+  transition: color 180ms linear;
+}
+.experience-dot {
+  z-index: 4;
+  width: calc(12px + var(--item-progress, 0) * 4px);
+  height: calc(12px + var(--item-progress, 0) * 4px);
+  transform: translate(-50%, -50%);
+  box-shadow:
+    0 0 calc(12px + var(--item-progress, 0) * 18px) rgba(204, 120, 92, calc(0.26 + var(--item-progress, 0) * 0.32)),
+    0 0 0 calc(var(--item-progress, 0) * 9px) rgba(204, 120, 92, 0.08);
+  transition: width 180ms linear, height 180ms linear, box-shadow 180ms linear;
+}
 .experience-top-fade {
   position: absolute;
   inset: 0 0 auto;
@@ -814,6 +873,19 @@
 .experience-section > .max-w-\[1200px\] {
   position: relative;
   z-index: 2;
+}
+@media (max-width: 767px), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .experience-copy {
+    opacity: 1;
+    transform: none;
+  }
+  .experience-period {
+    color: rgba(20, 20, 19, 0.2);
+  }
+  .experience-timeline-line::after,
+  .experience-progress-orb {
+    display: none;
+  }
 }
 .badge-pill {
   font-family: var(--font-mono);

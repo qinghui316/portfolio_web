@@ -1,4 +1,10 @@
+import { useEffect, useRef } from 'react';
+
 export default function SectionExperience() {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const timelineRef = useRef<HTMLDivElement | null>(null);
+  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
+
   const experiences = [
     {
       period: "2025.02 - 2026.04",
@@ -32,8 +38,58 @@ export default function SectionExperience() {
     }
   ];
 
+  useEffect(() => {
+    const timeline = timelineRef.current;
+    const items = itemRefs.current.filter(Boolean);
+    if (!timeline || items.length === 0) return;
+
+    const motionQuery = window.matchMedia('(min-width: 768px) and (pointer: fine) and (prefers-reduced-motion: no-preference)');
+    let rafId = 0;
+
+    const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+
+    const updateProgress = () => {
+      if (!motionQuery.matches) {
+        timeline.style.setProperty('--timeline-progress', '1');
+        items.forEach((item) => item.style.setProperty('--item-progress', '1'));
+        return;
+      }
+
+      const timelineRect = timeline.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || 1;
+      const startLine = viewportHeight * 0.72;
+      const endLine = viewportHeight * 0.28;
+      const progress = clamp01((startLine - timelineRect.top) / Math.max(1, timelineRect.height + startLine - endLine));
+
+      timeline.style.setProperty('--timeline-progress', progress.toFixed(4));
+
+      items.forEach((item) => {
+        const itemRect = item.getBoundingClientRect();
+        const itemCenter = itemRect.top + itemRect.height / 2;
+        const distance = Math.abs(itemCenter - viewportHeight * 0.52);
+        const itemProgress = clamp01(1 - distance / (viewportHeight * 0.38));
+        item.style.setProperty('--item-progress', itemProgress.toFixed(4));
+      });
+    };
+
+    const tick = () => {
+      updateProgress();
+      rafId = window.requestAnimationFrame(tick);
+    };
+
+    tick();
+    motionQuery.addEventListener('change', updateProgress);
+    window.addEventListener('resize', updateProgress);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      motionQuery.removeEventListener('change', updateProgress);
+      window.removeEventListener('resize', updateProgress);
+    };
+  }, []);
+
   return (
-    <section id="experience" className="experience-section bg-canvas py-32 relative text-ink z-20 overflow-hidden">
+    <section ref={sectionRef} id="experience" className="experience-section bg-canvas py-32 relative text-ink z-20 overflow-hidden">
       <div className="experience-top-fade" aria-hidden="true" />
       <div className="absolute inset-x-0 top-0 h-px bg-hairline" />
       <div className="max-w-[1200px] mx-auto px-6 md:px-12">
@@ -44,24 +100,31 @@ export default function SectionExperience() {
           </h2>
         </div>
         
-        <div className="relative mt-24">
+        <div ref={timelineRef} className="experience-timeline relative mt-24">
           {/* Center timeline line */}
-          <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-primary/50 to-transparent -translate-x-1/2" />
+          <div className="experience-timeline-line hidden md:block absolute top-0 bottom-0" />
+          <div className="experience-progress-orb hidden md:block" aria-hidden="true" />
           
           <div className="space-y-16">
             {experiences.map((exp, i) => (
-              <div key={i} className={`relative flex flex-col md:flex-row items-center ${i % 2 === 0 ? 'md:flex-row-reverse' : ''}`}>
+              <div
+                key={i}
+                ref={(node) => {
+                  itemRefs.current[i] = node;
+                }}
+                className={`experience-item relative flex flex-col md:flex-row items-center ${i % 2 === 0 ? 'md:flex-row-reverse' : ''}`}
+              >
                 
                 {/* Center Dot */}
-                <div className="hidden md:block absolute left-1/2 top-1/2 w-3 h-3 rounded-full bg-primary -translate-x-1/2 -translate-y-1/2 shadow-[0_0_15px_rgba(204,120,92,0.6)]" />
+                <div className="experience-dot hidden md:block absolute left-1/2 top-1/2 rounded-full bg-primary shadow-[0_0_15px_rgba(204,120,92,0.6)]" />
 
-                <div className={`w-full md:w-1/2 ${i % 2 === 0 ? 'md:pl-16' : 'md:pr-16 text-left md:text-right'} mb-4 md:mb-0`}>
+                <div className={`experience-copy w-full md:w-1/2 ${i % 2 === 0 ? 'md:pl-16' : 'md:pr-16 text-left md:text-right'} mb-4 md:mb-0`}>
                   <h3 className="font-display text-2xl md:text-3xl font-medium mb-1">{exp.role}</h3>
                   <h4 className="font-mono text-sm text-primary mb-4 uppercase tracking-widest">{exp.company}</h4>
                 </div>
                 
-                <div className={`w-full md:w-1/2 ${i % 2 === 0 ? 'md:pr-16 text-left md:text-right' : 'md:pl-16'}`}>
-                  <div className="font-display text-4xl md:text-5xl text-ink/20 font-medium mb-4">{exp.period.split(' - ')[0]}</div>
+                <div className={`experience-copy w-full md:w-1/2 ${i % 2 === 0 ? 'md:pr-16 text-left md:text-right' : 'md:pl-16'}`}>
+                  <div className="experience-period font-display text-4xl md:text-5xl text-ink/20 font-medium mb-4">{exp.period.split(' - ')[0]}</div>
                   {exp.desc && <p className="text-body text-sm leading-relaxed max-w-sm inline-block text-left">{exp.desc}</p>}
                 </div>
 

@@ -10,8 +10,10 @@ export default function SectionHero() {
 
       <nav className="hero-chrome absolute top-0 w-full px-6 py-6 md:px-8 flex justify-between items-center z-50 pointer-events-auto text-on-dark">
         <div className="font-display text-2xl md:text-3xl font-medium">刘晖洋</div>
-        <div className="hidden lg:block font-mono text-xs text-on-dark-soft">AI PRODUCT / AIGC / AGENT</div>
-        <div className="flex gap-6 md:gap-8 font-mono text-[11px] uppercase tracking-[0.24em] text-on-dark-soft">
+        <div className="hidden lg:block absolute left-1/2 -translate-x-1/2 font-mono text-sm xl:text-base font-semibold tracking-[0.08em] text-on-dark">
+          18379022106@163.com
+        </div>
+        <div className="flex gap-7 md:gap-12 lg:gap-14 font-mono text-xs md:text-sm font-semibold uppercase tracking-[0.18em] text-on-dark">
           <a href="#about" className="hover:text-primary transition-colors">About</a>
           <a href="#projects" className="hover:text-primary transition-colors">Work</a>
           <a href="#contact" className="hover:text-primary transition-colors">Contact</a>
