@@ -128,3 +128,53 @@ export const getNextCandidateUrl = (asset: VideoAsset, currentUrl: string) => {
   return '';
 };
 
+export const preloadImageAsset = (asset: VideoAsset) =>
+  new Promise<string>((resolve) => {
+    const tryCandidate = (index: number) => {
+      const url = asset.candidates[index];
+      if (!url) {
+        resolve(asset.fallbackUrl);
+        return;
+      }
+
+      const image = new Image();
+      image.onload = () => resolve(url);
+      image.onerror = () => tryCandidate(index + 1);
+      image.src = url;
+    };
+
+    tryCandidate(0);
+  });
+
+export const preloadVideoAsset = (asset: VideoAsset) =>
+  new Promise<string>((resolve) => {
+    const tryCandidate = (index: number) => {
+      const url = asset.candidates[index];
+      if (!url) {
+        resolve('');
+        return;
+      }
+
+      const video = document.createElement('video');
+      let settled = false;
+      const finish = (resolvedUrl: string) => {
+        if (settled) return;
+        settled = true;
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+        resolve(resolvedUrl);
+      };
+
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'auto';
+      video.oncanplay = () => finish(url);
+      video.onloadeddata = () => finish(url);
+      video.onerror = () => tryCandidate(index + 1);
+      video.src = url;
+      video.load();
+    };
+
+    tryCandidate(0);
+  });
