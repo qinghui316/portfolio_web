@@ -109,6 +109,7 @@ export default function SectionProjects() {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const moonaiPromoVideoUrl = import.meta.env.VITE_MOONAI_PROMO_VIDEO_URL?.trim();
+  const moonaiFilmDemoVideoUrl = import.meta.env.VITE_MOONAI_FILM_DEMO_VIDEO_URL?.trim();
 
   const projects: Project[] = [
     {
@@ -118,7 +119,8 @@ export default function SectionProjects() {
       tags: ["React+TS", "Node.js", "Prisma", "PostgreSQL", "JWT", "FFmpeg"],
       links: [
         { label: "GitHub ↗", href: "https://github.com/qinghui316/moonaigc" },
-        ...(moonaiPromoVideoUrl ? [{ label: "Watch Video ↗", href: moonaiPromoVideoUrl }] : []),
+        ...(moonaiPromoVideoUrl ? [{ label: "Promo Video ↗", href: moonaiPromoVideoUrl }] : []),
+        ...(moonaiFilmDemoVideoUrl ? [{ label: "Film Demo ↗", href: moonaiFilmDemoVideoUrl }] : []),
         { label: "Live Demo ↗", href: "https://moonai.asia/" },
       ],
       visual: "moonai",

@@ -76,6 +76,13 @@ const assets = [
     contentType: 'video/mp4',
     optional: true,
   },
+  {
+    envName: 'VITE_MOONAI_FILM_DEMO_VIDEO_URL',
+    localPath: 'media-export/moonai-film-demo.mp4',
+    objectKey: `${portfolioPrefix}/projects/moonai-film-demo.mp4`,
+    contentType: 'video/mp4',
+    optional: true,
+  },
 ];
 
 const selectedAssets = requestedEnvNames.size
