@@ -9,6 +9,7 @@ type Project = {
   position: string;
   desc: string;
   tags: string[];
+  titleHref?: string;
   links?: { label: string; href: string }[];
   visual: "moonai" | "harness" | "yaoxiaohui" | "video" | "embedding" | "course";
 };
@@ -117,6 +118,7 @@ export default function SectionProjects() {
       position: "AI 短剧创作平台 / 个人独立全栈开发并部署上线",
       desc: "从剧本改编、镜头语言、分镜生成、参考图匹配到视频合成，串起完整 AI 创作链路。",
       tags: ["React+TS", "Node.js", "Prisma", "PostgreSQL", "JWT", "FFmpeg"],
+      titleHref: "https://moonai.asia/",
       links: [
         { label: "GitHub ↗", href: "https://github.com/qinghui316/moonaigc" },
         ...(moonaiPromoVideoUrl ? [{ label: "Promo Video ↗", href: moonaiPromoVideoUrl }] : []),
@@ -231,7 +233,7 @@ export default function SectionProjects() {
       <div className="project-track" ref={trackRef}>
         <div className="project-spacer" />
         {projects.map((proj, i) => {
-          const titleLink = proj.links?.find((link) => link.label.startsWith("GitHub"));
+          const titleHref = proj.titleHref || proj.links?.find((link) => link.label.startsWith("GitHub"))?.href;
 
           return (
             <article key={proj.title} className="project-card">
@@ -245,8 +247,8 @@ export default function SectionProjects() {
 
                   <div>
                     <h3 className="font-display text-4xl md:text-5xl leading-[0.95] text-on-dark mb-5">
-                      {titleLink ? (
-                        <a href={titleLink.href} target="_blank" rel="noreferrer" className="transition-colors hover:text-primary">
+                      {titleHref ? (
+                        <a href={titleHref} target="_blank" rel="noreferrer" className="transition-colors hover:text-primary">
                           {proj.title}
                         </a>
                       ) : (
