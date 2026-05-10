@@ -6,12 +6,11 @@ gsap.registerPlugin(ScrollTrigger);
 
 type Project = {
   title: string;
-  href?: string;
-  demo?: string;
   position: string;
   desc: string;
   tags: string[];
-  visual: "moonai" | "yaoxiaohui" | "video" | "embedding" | "course";
+  links?: { label: string; href: string }[];
+  visual: "moonai" | "harness" | "yaoxiaohui" | "video" | "embedding" | "course";
 };
 
 function ProjectVisual({ type }: { type: Project["visual"] }) {
@@ -47,6 +46,27 @@ function ProjectVisual({ type }: { type: Project["visual"] }) {
         <div className="flow-line flow-line-a" />
         <div className="flow-line flow-line-b" />
         <div className="flow-line flow-line-c" />
+      </div>
+    );
+  }
+
+  if (type === "harness") {
+    return (
+      <div className="project-visual harness-visual">
+        <div className="harness-tree">
+          {["AGENTS.md", "docs/ECL.md", "harness/changes/active", "scripts/lint-ecl"].map((item) => (
+            <span key={item}>{item}</span>
+          ))}
+        </div>
+        <div className="harness-flow">
+          {["spec", "plan", "verify", "archive"].map((step) => (
+            <span key={step}>{step}</span>
+          ))}
+        </div>
+        <div className="harness-gate">
+          <span>CI gate</span>
+          <strong>auto-evolve</strong>
+        </div>
       </div>
     );
   }
@@ -88,16 +108,31 @@ function ProjectVisual({ type }: { type: Project["visual"] }) {
 export default function SectionProjects() {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
+  const moonaiPromoVideoUrl = import.meta.env.VITE_MOONAI_PROMO_VIDEO_URL?.trim();
 
   const projects: Project[] = [
     {
       title: "MoonAI 短剧 Agent 工作台",
-      href: "https://github.com/qinghui316/moonaigc",
-      demo: "https://moonai.asia/",
       position: "AI 短剧创作平台 / 个人独立全栈开发并部署上线",
       desc: "从剧本改编、镜头语言、分镜生成、参考图匹配到视频合成，串起完整 AI 创作链路。",
       tags: ["React+TS", "Node.js", "Prisma", "PostgreSQL", "JWT", "FFmpeg"],
+      links: [
+        { label: "GitHub ↗", href: "https://github.com/qinghui316/moonaigc" },
+        ...(moonaiPromoVideoUrl ? [{ label: "Watch Video ↗", href: moonaiPromoVideoUrl }] : []),
+        { label: "Live Demo ↗", href: "https://moonai.asia/" },
+      ],
       visual: "moonai",
+    },
+    {
+      title: "ECL Harness Engineer",
+      position: "AI Agent Harness 工程工具 / Codex Skill",
+      desc: "为代码仓库创建演进约束式 Agent Harness，把入口地图、active change、验证命令、任务交接和 auto-evolve 放回仓库。",
+      tags: ["Agent Harness", "Codex Skill", "ECL", "Active Change", "Lint / CI Gate", "Auto-Evolve"],
+      links: [
+        { label: "GitHub ↗", href: "https://github.com/qinghui316/ecl-harness-engineer" },
+        { label: "Article ↗", href: "https://mp.weixin.qq.com/s/L4x5B-wmG8JEgaCXxuhe1w" },
+      ],
+      visual: "harness",
     },
     {
       title: "遥小绘飞书多维表格 AIGC 平台",
@@ -193,52 +228,51 @@ export default function SectionProjects() {
 
       <div className="project-track" ref={trackRef}>
         <div className="project-spacer" />
-        {projects.map((proj, i) => (
-          <article key={proj.title} className="project-card">
-            <div className="project-card-inner">
-              <div className="project-meta">
-                <span>Project {String(i + 1).padStart(2, "0")}</span>
-                <span>{proj.position}</span>
-              </div>
+        {projects.map((proj, i) => {
+          const titleLink = proj.links?.find((link) => link.label.startsWith("GitHub"));
 
-              <ProjectVisual type={proj.visual} />
-
-                <div>
-                  <h3 className="font-display text-4xl md:text-5xl leading-[0.95] text-on-dark mb-5">
-                    {proj.demo ? (
-                      <a href={proj.demo} target="_blank" rel="noreferrer" className="transition-colors hover:text-primary">
-                        {proj.title}
-                      </a>
-                    ) : (
-                      proj.title
-                    )}
-                  </h3>
-                  <p className="text-on-dark-soft leading-relaxed max-w-[520px]">{proj.desc}</p>
+          return (
+            <article key={proj.title} className="project-card">
+              <div className="project-card-inner">
+                <div className="project-meta">
+                  <span>Project {String(i + 1).padStart(2, "0")}</span>
+                  <span>{proj.position}</span>
                 </div>
 
-              <div className="flex flex-wrap gap-2">
-                {proj.tags.map((tag) => (
-                  <span key={tag} className="dark-badge">
-                    {tag}
-                  </span>
-                ))}
-              </div>
+                <ProjectVisual type={proj.visual} />
 
-              <div className="flex gap-5 font-mono text-xs uppercase tracking-[0.18em]">
-                {proj.href && (
-                  <a href={proj.href} target="_blank" rel="noreferrer" className="text-primary hover:text-primary-active">
-                    GitHub ↗
-                  </a>
-                )}
-                {proj.demo && (
-                  <a href={proj.demo} target="_blank" rel="noreferrer" className="text-primary hover:text-primary-active">
-                    Live Demo ↗
-                  </a>
-                )}
+                  <div>
+                    <h3 className="font-display text-4xl md:text-5xl leading-[0.95] text-on-dark mb-5">
+                      {titleLink ? (
+                        <a href={titleLink.href} target="_blank" rel="noreferrer" className="transition-colors hover:text-primary">
+                          {proj.title}
+                        </a>
+                      ) : (
+                        proj.title
+                      )}
+                    </h3>
+                    <p className="text-on-dark-soft leading-relaxed max-w-[520px]">{proj.desc}</p>
+                  </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {proj.tags.map((tag) => (
+                    <span key={tag} className="dark-badge">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="project-links">
+                  {proj.links?.map((link) => (
+                    <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="text-primary hover:text-primary-active">
+                      {link.label}
+                    </a>
+                  ))}
+                </div>
               </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
 
         <div className="project-end">
           <p className="font-mono text-xs uppercase tracking-[0.26em] text-primary mb-5">Next</p>

@@ -30,6 +30,7 @@ const bucket = process.env.OSS_BUCKET_NAME;
 const prefix = (process.env.OSS_PREFIX || 'users').replace(/^\/+|\/+$/g, '');
 const forcePathStyle = process.env.OSS_FORCE_PATH_STYLE === 'true';
 const portfolioPrefix = `${prefix}/portfolio`;
+const requestedEnvNames = new Set(process.argv.slice(2));
 
 const assets = [
   {
@@ -68,7 +69,24 @@ const assets = [
     objectKey: `${portfolioPrefix}/scroll/scroll-work-poster.webp`,
     contentType: 'image/webp',
   },
+  {
+    envName: 'VITE_MOONAI_PROMO_VIDEO_URL',
+    localPath: 'media-export/moonai-workbench-promo.mp4',
+    objectKey: `${portfolioPrefix}/projects/moonai-workbench-promo.mp4`,
+    contentType: 'video/mp4',
+    optional: true,
+  },
 ];
+
+const selectedAssets = requestedEnvNames.size
+  ? assets.filter((asset) => requestedEnvNames.has(asset.envName))
+  : assets;
+const unknownEnvNames = [...requestedEnvNames].filter((envName) => !assets.some((asset) => asset.envName === envName));
+
+if (unknownEnvNames.length) {
+  console.error(`Unknown media env name(s): ${unknownEnvNames.join(', ')}`);
+  process.exit(1);
+}
 
 const getPublicUrl = (objectKey) => {
   if (forcePathStyle) {
@@ -151,7 +169,13 @@ const uploadAsset = (asset) =>
   });
 
 const uploaded = [];
-for (const asset of assets) {
+for (const asset of selectedAssets) {
+  const absolutePath = path.join(rootDir, asset.localPath);
+  if (asset.optional && !requestedEnvNames.size && !fs.existsSync(absolutePath)) {
+    console.log(`Skipping optional missing file: ${asset.localPath}`);
+    continue;
+  }
+
   process.stdout.write(`Uploading ${asset.localPath} ... `);
   const url = await uploadAsset(asset);
   uploaded.push({ envName: asset.envName, url });
@@ -162,4 +186,3 @@ console.log('\nAdd these public URLs to .env.production on the server:\n');
 for (const asset of uploaded) {
   console.log(`${asset.envName}="${asset.url}"`);
 }
-

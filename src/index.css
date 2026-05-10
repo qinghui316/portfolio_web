@@ -455,6 +455,15 @@
   text-align: right;
   color: var(--color-on-dark-soft);
 }
+.project-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
 .project-end {
   flex: 0 0 420px;
   min-height: 100vh;
@@ -594,6 +603,78 @@
 }
 .flow-line-b { top: 50%; }
 .flow-line-c { top: calc(50% + 1px); opacity: 0.4; }
+.harness-visual {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  grid-template-rows: 1fr auto;
+  gap: 18px;
+  padding: 34px;
+}
+.harness-tree {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid rgba(250, 249, 245, 0.12);
+  background: rgba(24, 23, 21, 0.68);
+  padding: 18px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-on-dark-soft);
+  z-index: 2;
+}
+.harness-tree span {
+  position: relative;
+  padding-left: 18px;
+  white-space: nowrap;
+}
+.harness-tree span::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.65em;
+  width: 9px;
+  height: 1px;
+  background: rgba(204, 120, 92, 0.82);
+}
+.harness-flow {
+  display: grid;
+  align-content: center;
+  gap: 9px;
+  z-index: 2;
+}
+.harness-flow span {
+  border: 1px dashed rgba(250, 249, 245, 0.2);
+  background: rgba(250, 249, 245, 0.055);
+  color: var(--color-on-dark);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 9px 12px;
+}
+.harness-flow span:nth-child(2),
+.harness-flow span:nth-child(3) {
+  margin-left: 24px;
+}
+.harness-gate {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(250, 249, 245, 0.14);
+  padding-top: 16px;
+  font-family: var(--font-mono);
+  color: var(--color-primary);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  z-index: 2;
+}
+.harness-gate strong {
+  color: var(--color-on-dark);
+  font-size: 12px;
+  font-weight: 500;
+}
 .timeline-visual {
   display: flex;
   align-items: flex-end;
@@ -982,5 +1063,27 @@
   }
   .project-meta span:last-child {
     text-align: left;
+  }
+  .harness-visual {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    height: 248px;
+    padding: 18px;
+  }
+  .harness-tree {
+    gap: 8px;
+    padding: 14px;
+    font-size: 10px;
+  }
+  .harness-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .harness-flow span:nth-child(2),
+  .harness-flow span:nth-child(3) {
+    margin-left: 0;
+  }
+  .harness-gate {
+    padding-top: 10px;
   }
 }
