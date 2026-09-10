@@ -31,8 +31,15 @@ find dist -type f \( -name '*.js' -o -name '*.css' -o -name '*.json' -o -name '*
   | xargs -0 -r gzip -9 -k -f
 
 echo "==> validate nginx configuration"
+NGINX_BACKUP="$(mktemp)"
+sudo cp "$NGINX_CONFIG" "$NGINX_BACKUP"
 sudo install -m 0644 deploy/nginx/portfolio.conf "$NGINX_CONFIG"
-sudo nginx -t
+if ! sudo nginx -t; then
+  echo "nginx validation failed; restoring the previous configuration" >&2
+  sudo cp "$NGINX_BACKUP" "$NGINX_CONFIG"
+  rm -f "$NGINX_BACKUP"
+  exit 1
+fi
 
 echo "==> sync to $WEB_ROOT"
 sudo rsync -a --delete dist/ "$WEB_ROOT/"
@@ -40,5 +47,6 @@ sudo chown -R "$WEB_OWNER" "$(dirname "$WEB_ROOT")"
 
 echo "==> reload nginx"
 sudo systemctl reload nginx
+rm -f "$NGINX_BACKUP"
 
 echo "==> done. https://portfolio.moonai.asia/"
