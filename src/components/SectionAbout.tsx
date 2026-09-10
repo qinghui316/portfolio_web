@@ -5,6 +5,7 @@ import AboutLanyard from './AboutLanyard';
 import { ABOUT_ASSETS as assets } from './about/aboutAssets';
 import { BADGE_DROP } from './about/aboutMotion';
 import { useAboutLifecycle } from './about/useAboutLifecycle';
+import { useAboutPreloadState } from './about/aboutPreload';
 import './about/about.css';
 
 function ResumeContent() {
@@ -38,7 +39,9 @@ function ResumeContent() {
 }
 
 export default function SectionAbout() {
-  const { section, near, visible, phase, entryCycle, foreground, reduced, settleEntrance, finishExit } = useAboutLifecycle();
+  const { section, visible, phase, entryCycle, foreground, reduced, settleEntrance, finishExit } = useAboutLifecycle();
+  const preload = useAboutPreloadState();
+  const visualsAvailable = preload.essentials === 'ready' || preload.essentials === 'failed';
   const dossier = useRef<HTMLDivElement>(null);
   const entrance = useRef<gsap.core.Timeline | null>(null);
   const lanyardActiveRef = useRef(false);
@@ -71,28 +74,28 @@ export default function SectionAbout() {
 
   useLayoutEffect(() => {
     const timeline = entrance.current;
-    if (!timeline) return;
+    if (!timeline || !visualsAvailable) return;
     if (reduced || phase === 'settled') timeline.progress(1).pause();
     else if (phase === 'entering') timeline.timeScale(1).play();
     else if (phase === 'exiting') timeline.timeScale(1.55).reverse();
     else timeline.progress(0).pause();
-  }, [phase, reduced]);
+  }, [phase, reduced, visualsAvailable]);
 
   return <section ref={section} id="about" className={`about-section is-${phase}`} aria-labelledby="about-title">
     <div className="about-original-layout">
     <div className="about-process" aria-hidden="true"><div className="about-visual-anchor"><span>Process 01</span><div/></div></div>
     <div className="about-anchor about-copy">
       <div ref={dossier} className="dossier-layout" inert={phase !== 'settled' || undefined} aria-hidden={phase === 'hidden' || undefined}>
-        <img className="dossier-spread" src={near ? assets.paper : undefined} alt="" aria-hidden="true"/>
-        <img className="comic-backing" src={near ? assets.backing : undefined} alt="" aria-hidden="true"/>
+        {visualsAvailable && <><img className="dossier-spread" src={assets.paper} alt="" aria-hidden="true"/>
+        <img className="comic-backing" src={assets.backing} alt="" aria-hidden="true"/></>}
         <header className="dossier-header">
           <span>LIU HUIYANG / DOSSIER 001</span><h2 id="about-title">ABOUT ME</h2>
           <p><span>AI 产品经理</span><span>AI 应用开发工程师</span></p>
         </header>
-        <AboutCharacterCard load={near} reduced={reduced}/>
+        <AboutCharacterCard load={visualsAvailable} reduced={reduced}/>
         <ResumeContent/>
         <AboutLanyard
-          load={near}
+          load={visualsAvailable}
           active={lanyardActive}
           running={lanyardActive && visible && foreground}
           entryCycle={entryCycle}

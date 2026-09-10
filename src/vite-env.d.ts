@@ -1,5 +1,10 @@
 /// <reference types="vite/client" />
 
+declare module '*.glb' {
+  const url: string;
+  export default url;
+}
+
 interface ImportMetaEnv {
   readonly VITE_HERO_LOOK_SCRUB_2K_URL?: string;
   readonly VITE_HERO_LOOK_SCRUB_1080_URL?: string;

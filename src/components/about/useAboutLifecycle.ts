@@ -13,7 +13,7 @@ type PortfolioWindow = Window & {
 
 export function useAboutLifecycle() {
   const section = useRef<HTMLElement>(null);
-  const [near, setNear] = useState(false), [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(false);
   const [phase, setPhase] = useState<AboutPhase>(() => location.hash === '#about' ? 'settled' : 'hidden');
   const [entryCycle, setEntryCycle] = useState(() => location.hash === '#about' ? 1 : 0);
   const phaseRef = useRef(phase);
@@ -38,7 +38,6 @@ export function useAboutLifecycle() {
     const desktop = matchMedia('(min-width: 1200px) and (pointer: fine)');
     let lastScrollY = window.scrollY;
     let suppressNavigationScrollUntil = 0;
-    const preload = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setNear(true); }, { rootMargin: '100% 0px' });
     const presence = new IntersectionObserver(([entry]) => {
       setVisible(entry.isIntersecting);
       if (!desktop.matches && entry.intersectionRatio >= 0.2 && phaseRef.current === 'hidden') commitPhase('settled');
@@ -47,7 +46,6 @@ export function useAboutLifecycle() {
     const hash = () => {
       if (location.hash !== '#about') return;
       suppressNavigationScrollUntil = performance.now() + 600;
-      setNear(true);
       commitPhase('settled');
       requestAnimationFrame(() => { lastScrollY = window.scrollY; });
     };
@@ -85,12 +83,12 @@ export function useAboutLifecycle() {
       else window.scrollTo({ top: sectionTop });
     };
     const restore = () => requestAnimationFrame(evaluateEntry);
-    preload.observe(element); presence.observe(element); motion(); hash();
+    presence.observe(element); motion(); hash();
     window.addEventListener('hashchange', hash); window.addEventListener('pageshow', hash);
     window.addEventListener('pageshow', restore); window.addEventListener('scroll', evaluateEntry, { passive: true });
     document.addEventListener('visibilitychange', visibility); mq.addEventListener('change', motion);
     return () => {
-      preload.disconnect(); presence.disconnect(); window.removeEventListener('hashchange', hash);
+      presence.disconnect(); window.removeEventListener('hashchange', hash);
       window.removeEventListener('pageshow', hash); window.removeEventListener('pageshow', restore);
       window.removeEventListener('scroll', evaluateEntry); document.removeEventListener('visibilitychange', visibility); mq.removeEventListener('change', motion);
     };
@@ -130,5 +128,5 @@ export function useAboutLifecycle() {
     };
   }, [phase, commitPhase, settleEntrance]);
 
-  return { section, near, visible, phase, entryCycle, foreground, reduced, settleEntrance, finishExit };
+  return { section, visible, phase, entryCycle, foreground, reduced, settleEntrance, finishExit };
 }

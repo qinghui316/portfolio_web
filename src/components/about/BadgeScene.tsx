@@ -20,7 +20,7 @@ type SceneProps = {
   onError: () => void;
 };
 type DragState = { plane: THREE.Plane; offset: THREE.Vector3; position: THREE.Vector3; velocity: THREE.Vector3; samples: {time:number;point:THREE.Vector3}[]; capture: {target:Element;id:number} };
-export function preloadBadge() { useGLTF.preload(assets.model); useTexture.preload([assets.front, assets.back, assets.band]); }
+export function preloadBadge() { useGLTF.preload(assets.model); useTexture.preload([assets.badgeAtlas, assets.band]); }
 
 function ribbonGeometry() {
   const geometry = new THREE.BufferGeometry();
@@ -35,10 +35,10 @@ function ribbonGeometry() {
   return geometry;
 }
 
-function Assembly({ running, rear, entryCycle, onReady, onArrived }: SceneProps) {
+function Assembly({ running, rear, entryCycle, onArrived }: SceneProps) {
   const fixed = useRef<RapierRigidBody>(null!), a = useRef<RapierRigidBody>(null!), b = useRef<RapierRigidBody>(null!), c = useRef<RapierRigidBody>(null!), card = useRef<RapierRigidBody>(null!);
   const ribbon = useRef<THREE.Mesh>(null);
-  const signalled = useRef(false), frames = useRef(0), flipping = useRef(false), lastSide = useRef(rear);
+  const flipping = useRef(false), lastSide = useRef(rear);
   const initialRotation = useRef<[number,number,number]>([0,rear?Math.PI:0,0]);
   const drag = useRef<DragState | null>(null);
   const releaseVelocity = useRef<THREE.Vector3 | null>(null);
@@ -46,7 +46,7 @@ function Assembly({ running, rear, entryCycle, onReady, onArrived }: SceneProps)
   const [held, setHeld] = useState(false);
   const [hover, setHover] = useState(false);
   const { nodes } = useGLTF(assets.model) as unknown as {nodes: Record<'card'|'clip'|'clamp', THREE.Mesh>};
-  const [front, back, fabric] = useTexture([assets.front, assets.back, assets.band]);
+  const [atlas, fabric] = useTexture([assets.badgeAtlas, assets.band]);
   const geometry = useMemo(() => {
     const g = nodes.card.geometry.clone().toNonIndexed();
     g.computeBoundingBox();
@@ -71,24 +71,11 @@ function Assembly({ running, rear, entryCycle, onReady, onArrived }: SceneProps)
     return g;
   }, [nodes.card.geometry]);
   const map = useMemo(() => {
-    const cv = document.createElement('canvas'); cv.width = cv.height = 4096;
-    const ctx = cv.getContext('2d'); if (!ctx) throw new Error('Canvas texture unavailable'); ctx.fillStyle = '#d4d7d5'; ctx.fillRect(0, 0, 4096, 4096);
-    // Preserve each complete generated face while exposing the existing shell.
-    for(const [image,x,height] of [[front.image,0,4096*.755],[back.image,2048,4096*.757]] as [CanvasImageSource,number,number][]) {
-      const left=x+2048*.05,top=height*.075,w=2048*.9,h=height*.9;
-      ctx.save();
-      ctx.beginPath();ctx.roundRect(left-7,top-7,w+14,h+14,70);
-      ctx.fillStyle='#767f7c';ctx.fill();
-      ctx.beginPath();ctx.roundRect(left,top,w,h,64);ctx.clip();
-      ctx.drawImage(image,left,top,w,h);
-      ctx.restore();
-      ctx.beginPath();ctx.roundRect(x+12,12,2024,height-24,80);
-      ctx.strokeStyle='#f8faf9';ctx.lineWidth=10;ctx.stroke();
-    }
-    const texture = new THREE.CanvasTexture(cv); texture.flipY = false;
+    const texture = atlas.clone(); texture.flipY = false;
     texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 16;
+    texture.needsUpdate = true;
     return texture;
-  }, [front, back]);
+  }, [atlas]);
   const bandMap = useMemo(() => {
     const texture = fabric.clone(); texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
     texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 16; texture.needsUpdate = true;
@@ -162,7 +149,6 @@ function Assembly({ running, rear, entryCycle, onReady, onArrived }: SceneProps)
   }, [entryCycle]);
   useFrame((state, delta) => {
     if (!running) return;
-    if (!signalled.current && ++frames.current > 3) { signalled.current = true; onReady(); }
     if (!card.current || !fixed.current) return;
     const s = scratch, dt = Math.min(delta, 0.1), body = card.current;
     const dropState = drop.current;
@@ -296,10 +282,30 @@ function ContextGuard({ onError }: { onError: () => void }) {
   }, [gl, onError]);
   return null;
 }
+
+function ReadyCompiler({ onReady, onError }: Pick<SceneProps, 'onReady' | 'onError'>) {
+  const gl = useThree(state => state.gl);
+  const scene = useThree(state => state.scene);
+  const camera = useThree(state => state.camera);
+  useEffect(() => {
+    let cancelled = false;
+    const frame = requestAnimationFrame(() => {
+      void gl.compileAsync(scene, camera)
+        .then(() => { if (!cancelled) onReady(); })
+        .catch(() => { if (!cancelled) onError(); });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
+  }, [camera, gl, onError, onReady, scene]);
+  return null;
+}
+
 export default function BadgeScene(props: SceneProps) {
   return <Canvas shadows={{type:THREE.PCFShadowMap}} camera={{position:[1.64,0.2,11.7],fov:26}}
     onCreated={({camera})=>{camera.lookAt(0,0.2,0);}}
-    frameloop={props.running?'always':'never'} dpr={[1,2]} gl={{alpha:true,antialias:true}}>
+    frameloop={props.running?'always':'demand'} dpr={[1,2]} gl={{alpha:true,antialias:true}}>
     <ContextGuard onError={props.onError}/>
     <ambientLight intensity={0.9}/>
     <directionalLight castShadow color="white" intensity={2.6} position={[-3,5,8]} shadow-mapSize={[2048,2048]} shadow-camera-left={-4} shadow-camera-right={4} shadow-camera-top={6} shadow-camera-bottom={-4} shadow-normalBias={0.02} shadow-bias={-0.0001} shadow-radius={4}/>
@@ -312,6 +318,7 @@ export default function BadgeScene(props: SceneProps) {
         <Lightformer color="white" intensity={0.7} position={[0,0,8]} scale={[6,5,1]}/>
         <Lightformer color="white" intensity={2} position={[0,4,-4]} rotation={[0,Math.PI,0]} scale={[4,4,1]}/>
       </Environment>
+      <ReadyCompiler onReady={props.onReady} onError={props.onError}/>
     </Suspense>
   </Canvas>;
 }

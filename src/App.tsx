@@ -13,17 +13,20 @@ import SectionAbout from './components/SectionAbout';
 import SectionWhatIDo from './components/SectionWhatIDo';
 import SectionExperience from './components/SectionExperience';
 import SectionContact from './components/SectionContact';
+import { prepareAboutEssentials } from './components/about/aboutPreload';
 import { getPortfolioVideoManifest, preloadImageAsset, preloadVideoAsset } from './lib/videoResources';
 
 const SectionProjects = lazy(() => import('./components/SectionProjects'));
 const BOOT_TIMEOUT_MS = 10000;
 const MIN_LOADING_MS = 1200;
+const ABOUT_PRELOAD_MAX_WAIT_MS = 1000;
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isExitingLoading, setIsExitingLoading] = useState(false);
   const [assetsReady, setAssetsReady] = useState(false);
   const [heroWarmupReady, setHeroWarmupReady] = useState(false);
+  const [aboutGateReady, setAboutGateReady] = useState(false);
   const [bootProgress, setBootProgress] = useState(0);
   const [bootStatus, setBootStatus] = useState('Initializing video system...');
   const [bootTimedOut, setBootTimedOut] = useState(false);
@@ -166,8 +169,29 @@ export default function App() {
   }, [setProgress]);
 
   useEffect(() => {
+    if (!assetsReady) return;
+    let cancelled = false;
+    const deadline = window.setTimeout(() => {
+      if (!cancelled) setAboutGateReady(true);
+    }, ABOUT_PRELOAD_MAX_WAIT_MS);
+
+    void prepareAboutEssentials()
+      .catch(() => undefined)
+      .finally(() => {
+        if (cancelled) return;
+        window.clearTimeout(deadline);
+        setAboutGateReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(deadline);
+    };
+  }, [assetsReady]);
+
+  useEffect(() => {
     if (!isLoading || isExitingLoading) return;
-    if (!bootTimedOut && (!assetsReady || !heroWarmupReady)) return;
+    if (!bootTimedOut && (!assetsReady || !heroWarmupReady || !aboutGateReady)) return;
 
     const elapsed = Date.now() - loadingStartedAtRef.current;
     const waitForMinimum = Math.max(0, MIN_LOADING_MS - elapsed);
@@ -178,7 +202,7 @@ export default function App() {
     }, waitForMinimum);
 
     return () => window.clearTimeout(finishTimer);
-  }, [assetsReady, bootTimedOut, heroWarmupReady, isExitingLoading, isLoading, setProgress]);
+  }, [aboutGateReady, assetsReady, bootTimedOut, heroWarmupReady, isExitingLoading, isLoading, setProgress]);
 
   return (
     <div className="bg-canvas min-h-screen text-ink overflow-x-hidden font-sans">

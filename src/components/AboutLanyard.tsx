@@ -1,6 +1,7 @@
 import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Rotate3D } from 'lucide-react';
 import { ABOUT_ASSETS as assets } from './about/aboutAssets';
+import { getAboutPreloadState, markAboutInteractiveFailed, markAboutInteractiveReady, prepareAboutInteractive, useAboutPreloadState } from './about/aboutPreload';
 const Scene = lazy(() => import('./about/BadgeScene'));
 
 class SceneBoundary extends Component<{ children: ReactNode; onError: () => void }, { failed: boolean }> {
@@ -19,11 +20,13 @@ type AboutLanyardProps = {
 
 export default function AboutLanyard({ load, active, running, entryCycle, reduced }: AboutLanyardProps) {
   const [desktop, setDesktop] = useState(() => matchMedia('(min-width:1200px) and (pointer:fine)').matches);
-  const [rear, setRear] = useState(false), [ready, setReady] = useState(false), [failed, setFailed] = useState(false);
+  const preload = useAboutPreloadState();
+  const [rear, setRear] = useState(false), [ready, setReady] = useState(false);
   const [arrived, setArrived] = useState(false);
+  const [cyclePhysical, setCyclePhysical] = useState(false);
   const area = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
-  const physical = load && desktop && !reduced && !failed;
+  const warmup = desktop && !reduced && preload.interactive !== 'idle' && preload.interactive !== 'failed';
   useEffect(() => {
     const q = matchMedia('(min-width:1200px) and (pointer:fine)');
     const update = () => setDesktop(q.matches); q.addEventListener('change', update);
@@ -35,34 +38,40 @@ export default function AboutLanyard({ load, active, running, entryCycle, reduce
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
-    if (!physical) { setReady(false); return; }
-    let cancelled = false;
-    import('./about/BadgeScene').then(module => { if (!cancelled) module.preloadBadge(); }).catch(() => { if (!cancelled) setFailed(true); });
-    return () => { cancelled = true; };
-  }, [physical]);
+    if (!desktop || reduced || preload.essentials !== 'ready' || preload.interactive !== 'idle') return;
+    void prepareAboutInteractive().catch(() => undefined);
+  }, [desktop, preload.essentials, preload.interactive, reduced]);
   useEffect(() => {
     setRear(false);
     setArrived(false);
+    setCyclePhysical(getAboutPreloadState().interactive === 'ready');
   }, [entryCycle]);
   useEffect(() => {
-    if (!active || physical || !desktop || reduced || !failed) return;
+    if (entryCycle === 0 && preload.interactive === 'ready') setCyclePhysical(true);
+  }, [entryCycle, preload.interactive]);
+  useEffect(() => {
+    if (!active || cyclePhysical) return;
+    if (!desktop || reduced) {
+      setArrived(true);
+      return;
+    }
     const timer = window.setTimeout(() => setArrived(true), 1200);
     return () => window.clearTimeout(timer);
-  }, [active, desktop, failed, physical, reduced]);
-  const onReady = useCallback(() => setReady(true), []);
+  }, [active, cyclePhysical, desktop, reduced]);
+  const onReady = useCallback(() => { setReady(true); markAboutInteractiveReady(); }, []);
   const onArrived = useCallback(() => setArrived(true), []);
-  const onError = useCallback(() => { setReady(false); setFailed(true); }, []);
-  const staticVisible = load && !physical && (!desktop || reduced || active);
-  const buttonVisible = load && active && (physical ? arrived : (!desktop || reduced || arrived));
+  const onError = useCallback(() => { setReady(false); setCyclePhysical(false); markAboutInteractiveFailed(); }, []);
+  const staticVisible = load && (!desktop || reduced || (active && !cyclePhysical));
+  const buttonVisible = load && active && arrived;
   return <div
     ref={area}
     className={`lanyard-column${active ? ' is-active' : ''}${arrived ? ' is-arrived' : ''}`}
     aria-label="LIU HUIYANG 工牌"
-    data-renderer={physical && ready ? 'physics' : 'static'}
+    data-renderer={cyclePhysical && ready ? 'physics' : 'static'}
   >
-    {load && <img className={`badge-render${staticVisible ? ' is-visible' : ''}${desktop && failed && !reduced ? ' is-fallback' : ''}`} src={rear ? assets.staticBack : assets.staticFront} alt={rear ? '工牌背面：开源项目与公开主页' : 'LIU HUIYANG 工牌正面'} draggable={false}/>}
-    {physical && <div className={`badge-canvas${ready && active ? ' is-ready' : ''}`}>
-      <SceneBoundary onError={onError}><Suspense fallback={null}><Scene running={running && inView} entryCycle={entryCycle} rear={rear} onReady={onReady} onArrived={onArrived} onError={onError}/></Suspense></SceneBoundary>
+    {load && <img className={`badge-render${staticVisible ? ' is-visible' : ''}${desktop && !cyclePhysical && !reduced ? ' is-fallback' : ''}`} src={rear ? assets.staticBack : assets.staticFront} alt={rear ? '工牌背面：开源项目与公开主页' : 'LIU HUIYANG 工牌正面'} draggable={false}/>}
+    {warmup && <div className={`badge-canvas${cyclePhysical && ready && active ? ' is-ready' : ''}`}>
+      <SceneBoundary onError={onError}><Suspense fallback={null}><Scene running={cyclePhysical && running && inView} entryCycle={entryCycle} rear={rear} onReady={onReady} onArrived={onArrived} onError={onError}/></Suspense></SceneBoundary>
     </div>}
     <button
       className={`badge-flip${buttonVisible ? ' is-visible' : ''}`}
