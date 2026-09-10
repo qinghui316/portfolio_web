@@ -218,48 +218,6 @@
 }
 
 /* Deep narrative About + work video */
-.about-section {
-  border-top: 1px solid rgba(250, 249, 245, 0.08);
-}
-.about-section::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 0;
-  height: 26vh;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(24, 23, 21, 0) 0%, rgba(9, 12, 9, 0.56) 72%, rgba(7, 9, 7, 0.92) 100%);
-}
-.about-process {
-  position: relative;
-  min-height: 520px;
-  overflow: visible;
-}
-.about-visual-anchor {
-  position: absolute;
-  left: 0;
-  bottom: 8vh;
-  z-index: 5;
-  width: min(360px, 78%);
-  color: rgba(250, 249, 245, 0.34);
-}
-.about-visual-anchor span {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--color-primary);
-  margin-bottom: 24px;
-}
-.about-visual-anchor div {
-  width: 180px;
-  height: 1px;
-  background: rgba(204, 120, 92, 0.45);
-}
-.about-copy {
-  position: relative;
-  z-index: 4;
-}
 .what-visual-column {
   position: relative;
   min-height: 620px;
@@ -327,9 +285,6 @@
     linear-gradient(90deg, rgba(7, 9, 7, 0.32) 0%, rgba(7, 9, 7, 0.56) 42%, rgba(7, 9, 7, 0.82) 100%);
 }
 @media (max-width: 1024px) {
-  .about-process {
-    min-height: 420px;
-  }
   .what-i-do-inner {
     grid-template-columns: 1fr;
   }
@@ -1051,7 +1006,6 @@
 
 @media (max-width: 768px) {
   .hero-section,
-  .about-section,
   .what-i-do-section {
     min-height: auto;
   }

@@ -38,9 +38,8 @@ export default function App() {
 
   useEffect(() => {
     if ('scrollRestoration' in window.history) {
-      window.history.scrollRestoration = 'manual';
+      window.history.scrollRestoration = 'auto';
     }
-    window.scrollTo(0, 0);
 
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     if (mediaQuery.matches) return;
@@ -79,6 +78,15 @@ export default function App() {
     } else {
       document.body.style.overflow = '';
       lenisRef.current?.start();
+      const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+      if (window.location.hash === '#about' && navigation?.type === 'navigate') {
+        const about = document.getElementById('about');
+        if (about) {
+          const top = about.getBoundingClientRect().top + window.scrollY - 80;
+          if (lenisRef.current) lenisRef.current.scrollTo(top, { immediate: true });
+          else window.scrollTo(0, top);
+        }
+      }
     }
 
     return () => {
@@ -181,7 +189,7 @@ export default function App() {
       <main
         id="main"
         className={`relative group ${isLoading ? 'pointer-events-none select-none' : ''}`}
-        inert={isLoading ? '' : undefined}
+        inert={isLoading || undefined}
       >
         <NarrativeVideoLayer />
         <SectionHero

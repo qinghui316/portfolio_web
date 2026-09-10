@@ -1,67 +1,105 @@
-export default function SectionAbout() {
-  const keywords = [
-    "ComfyUI",
-    "LoRA",
-    "MCP",
-    "RAG",
-    "N8N",
-    "FastAPI",
-    "React",
-    "Prisma",
-    "PostgreSQL",
-    "Linux",
+import { useLayoutEffect, useRef, useState } from 'react';
+import gsap from 'gsap';
+import AboutCharacterCard from './AboutCharacterCard';
+import AboutLanyard from './AboutLanyard';
+import { ABOUT_ASSETS as assets } from './about/aboutAssets';
+import { BADGE_DROP } from './about/aboutMotion';
+import { useAboutLifecycle } from './about/useAboutLifecycle';
+import './about/about.css';
+
+function ResumeContent() {
+  const experiences = [
+    { period: '2026.02–04', company: '杭州遥望', role: 'AI 算法工程师', summary: '构建 video_fast_clip 的质量过滤、Embedding 聚类与代表片段选择，并串联 ASR、VLM、LLM、TTS 与 FFmpeg。' },
+    { period: '2025.10–2026.02', company: '杭州遥望', role: 'AIGC 设计师', summary: '负责漫剧与数字人口播生产，沉淀 ComfyUI、LoRA、N8N 工作流及内容 SOP。' },
+    { period: '长期合作', company: '上海一条', role: 'AI 课程主讲老师', summary: '负责 AIGC、Agent、ComfyUI 与 AI 应用开发课程设计和授课。' },
   ];
-
   return (
-    <section className="about-section min-h-screen w-full relative flex items-center bg-surface-dark text-on-dark py-24 md:py-32 overflow-hidden" id="about">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_32%,rgba(204,120,92,0.16),transparent_24%),radial-gradient(circle_at_84%_16%,rgba(93,184,166,0.08),transparent_22%),linear-gradient(180deg,#181715_0%,#1b1a17_56%,#181715_100%)]" />
-      <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-surface-dark to-transparent" />
-      <div className="absolute left-[7vw] top-[18vh] hidden lg:block font-display text-[96px] leading-[0.86] text-on-dark/[0.045] pointer-events-none">
-        Architecture<br />
-        AIGC<br />
-        Agent
-      </div>
-
-      <div className="max-w-[1480px] mx-auto w-full px-6 md:px-12 xl:px-24 grid lg:grid-cols-[0.86fr_1.14fr] gap-16 items-center relative z-20">
-        <div className="about-process" aria-hidden="true">
-          <div className="about-visual-anchor">
-            <span>Process 01</span>
-            <div />
-          </div>
-        </div>
-
-        <div className="about-copy pointer-events-auto">
-          <p className="font-mono text-xs text-primary uppercase tracking-[0.26em] mb-6">About Me</p>
-          <h2 className="font-display text-5xl md:text-7xl leading-[0.95] mb-10">
-            把不稳定的 AI 工具，变成可复用的生产系统。
-          </h2>
-
-          <div className="grid md:grid-cols-2 gap-x-10 gap-y-8 text-on-dark-soft leading-relaxed">
-            <p>
-              <strong className="text-primary font-medium">建筑学硕士背景</strong> 带来空间叙事、视觉审美、结构化表达和方案落地能力。
-            </p>
-            <p>
-              <strong className="text-on-dark font-medium">AIGC 经验</strong> 覆盖漫剧、数字人口播、视觉内容生产 SOP、ComfyUI 工作流和 LoRA 调优。
-            </p>
-            <p>
-              <strong className="text-on-dark font-medium">Agent 经验</strong> 覆盖 MCP、RAG、embedding、N8N、飞书多维表格、Claude Code、Codex、Cursor。
-            </p>
-            <p>
-              <strong className="text-on-dark font-medium">工程经验</strong> 覆盖 FastAPI、Next.js、React、Node.js、Prisma、PostgreSQL、Linux 部署。
-            </p>
-          </div>
-
-          <div className="mt-10 pt-8 border-t border-on-dark/12">
-            <div className="flex flex-wrap gap-2">
-              {keywords.map((keyword) => (
-                <span key={keyword} className="dark-badge">
-                  {keyword}
-                </span>
-              ))}
+    <article className="resume-content">
+      <div className="resume-grid">
+        <section className="open-source">
+          <h3><span className="section-index">01</span> 核心开源贡献 <small>OPEN SOURCE</small></h3>
+          <h4>ECL Harness Engineer</h4>
+          <b>项目级 Agent 工程系统 · 独立开源</b>
+          <p>为复杂项目建立共享知识、项目地图与变更记录；以 Structured Change 组织需求、任务和验收，支持多 Agent、多 Worktree 并行开发、验证与失败恢复。</p>
+          <nav aria-label="开源贡献链接"><a href="https://github.com/qinghui316/ecl-harness-engineer" target="_blank" rel="noreferrer">GitHub / ECL</a><a href="https://github.com/sickn33/agentic-awesome-skills/pull/678" target="_blank" rel="noreferrer">PR #678 · 已收录</a></nav>
+        </section>
+        <section className="experience-list">
+          <h3><span className="section-index">02</span> 工作经历 <small>EXPERIENCE</small></h3>
+          {experiences.map(({ period, company, role, summary }) => (
+            <div className="experience-row" key={`${period}-${role}`}>
+              <div className="experience-meta"><time>{period}</time><span>·</span><b>{company}</b></div>
+              <h4>{role}</h4><p>{summary}</p>
             </div>
-          </div>
-        </div>
+          ))}
+        </section>
       </div>
-    </section>
+    </article>
   );
+}
+
+export default function SectionAbout() {
+  const { section, near, visible, phase, entryCycle, foreground, reduced, settleEntrance, finishExit } = useAboutLifecycle();
+  const dossier = useRef<HTMLDivElement>(null);
+  const entrance = useRef<gsap.core.Timeline | null>(null);
+  const lanyardActiveRef = useRef(false);
+  const [lanyardActive, setLanyardActive] = useState(false);
+
+  useLayoutEffect(() => {
+    const element = dossier.current;
+    if (!element) return;
+    const context = gsap.context(() => {
+      gsap.set(element, { autoAlpha: 0, y: -140, scale: 0.985, transformOrigin: '78% 0%' });
+      entrance.current = gsap.timeline({
+        paused: true,
+        onComplete: settleEntrance,
+        onReverseComplete: finishExit,
+        onUpdate: () => {
+          const active = (entrance.current?.progress() ?? 0) >= BADGE_DROP.triggerProgress;
+          if (active !== lanyardActiveRef.current) {
+            lanyardActiveRef.current = active;
+            setLanyardActive(active);
+          }
+        },
+      })
+        .to(element, { autoAlpha: 1, duration: 0.14, ease: 'power1.out' }, 0)
+        .to(element, { y: 12, scale: 1, duration: 0.44, ease: 'power3.out' }, 0)
+        .to(element, { y: -5, duration: 0.14, ease: 'power1.inOut' })
+        .to(element, { y: 0, duration: 0.18, ease: 'power1.out' });
+    }, element);
+    return () => { entrance.current = null; context.revert(); };
+  }, [finishExit, settleEntrance]);
+
+  useLayoutEffect(() => {
+    const timeline = entrance.current;
+    if (!timeline) return;
+    if (reduced || phase === 'settled') timeline.progress(1).pause();
+    else if (phase === 'entering') timeline.timeScale(1).play();
+    else if (phase === 'exiting') timeline.timeScale(1.55).reverse();
+    else timeline.progress(0).pause();
+  }, [phase, reduced]);
+
+  return <section ref={section} id="about" className={`about-section is-${phase}`} aria-labelledby="about-title">
+    <div className="about-original-layout">
+    <div className="about-process" aria-hidden="true"><div className="about-visual-anchor"><span>Process 01</span><div/></div></div>
+    <div className="about-anchor about-copy">
+      <div ref={dossier} className="dossier-layout" inert={phase !== 'settled' || undefined} aria-hidden={phase === 'hidden' || undefined}>
+        <img className="dossier-spread" src={near ? assets.paper : undefined} alt="" aria-hidden="true"/>
+        <img className="comic-backing" src={near ? assets.backing : undefined} alt="" aria-hidden="true"/>
+        <header className="dossier-header">
+          <span>LIU HUIYANG / DOSSIER 001</span><h2 id="about-title">ABOUT ME</h2>
+          <p><span>AI 产品经理</span><span>AI 应用开发工程师</span></p>
+        </header>
+        <AboutCharacterCard load={near} reduced={reduced}/>
+        <ResumeContent/>
+        <AboutLanyard
+          load={near}
+          active={lanyardActive}
+          running={lanyardActive && visible && foreground}
+          entryCycle={entryCycle}
+          reduced={reduced}
+        />
+      </div>
+    </div>
+    </div>
+  </section>;
 }
