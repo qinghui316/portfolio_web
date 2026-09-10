@@ -8,6 +8,15 @@ NGINX_CONFIG="/etc/nginx/conf.d/portfolio.conf"
 
 cd "$PROJECT_DIR"
 
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+if [[ ! -s "$NVM_DIR/nvm.sh" ]]; then
+  echo "nvm is required to select the project Node.js version" >&2
+  exit 1
+fi
+# shellcheck source=/dev/null
+source "$NVM_DIR/nvm.sh"
+nvm use
+
 echo "==> git pull"
 git pull --ff-only
 
