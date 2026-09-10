@@ -8,14 +8,14 @@ NGINX_CONFIG="/etc/nginx/conf.d/portfolio.conf"
 
 cd "$PROJECT_DIR"
 
-export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-if [[ ! -s "$NVM_DIR/nvm.sh" ]]; then
-  echo "nvm is required to select the project Node.js version" >&2
+NODE_VERSION="$(tr -d '[:space:]' < .nvmrc)"
+NODE_BIN="$HOME/.nvm/versions/node/v$NODE_VERSION/bin"
+if [[ ! -x "$NODE_BIN/node" ]]; then
+  echo "Node.js $NODE_VERSION is not installed at $NODE_BIN" >&2
   exit 1
 fi
-# shellcheck source=/dev/null
-source "$NVM_DIR/nvm.sh"
-nvm use
+export PATH="$NODE_BIN:$PATH"
+echo "==> using Node.js $(node --version)"
 
 echo "==> git pull"
 git pull --ff-only
