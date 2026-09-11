@@ -1,54 +1,125 @@
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 
+type CursorMode = 'default' | 'interactive' | 'lens-hover' | 'lens-dragging';
+
 export default function Cursor() {
   const cursorRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLSpanElement>(null);
+  const rotorRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     const cursor = cursorRef.current;
-    if (!cursor) return;
+    const cursorBody = bodyRef.current;
+    const cursorRotor = rotorRef.current;
+    if (!cursor || !cursorBody || !cursorRotor) return;
     if (window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       return;
     }
 
-    const onMouseMove = (e: MouseEvent) => {
-      gsap.to(cursor, {
-        x: e.clientX,
-        y: e.clientY,
-        duration: 0.1,
-        ease: 'power2.out',
+    let mode: CursorMode = 'default';
+    let lastX = 0;
+    let pointerDown = false;
+    let modeFrame = 0;
+    const interactiveSelector = 'a, button, [role="button"], input, select, textarea';
+    const context = gsap.context(() => {
+      gsap.set(cursor, { xPercent: -50, yPercent: -50 });
+    }, cursor);
+    const moveX = gsap.quickTo(cursor, 'x', { duration: 0.11, ease: 'power2.out' });
+    const moveY = gsap.quickTo(cursor, 'y', { duration: 0.11, ease: 'power2.out' });
+
+    const setMode = (nextMode: CursorMode) => {
+      if (mode === nextMode) return;
+      mode = nextMode;
+      cursor.dataset.mode = nextMode;
+      if (nextMode === 'lens-hover') {
+        gsap.to(cursorRotor, { rotation: 6, duration: 0.22, ease: 'power2.out', overwrite: 'auto' });
+      } else if (nextMode !== 'lens-dragging') {
+        gsap.to(cursorRotor, { rotation: 0, duration: 0.22, ease: 'power2.out', overwrite: 'auto' });
+      }
+    };
+
+    const resolveMode = (target: EventTarget | null): CursorMode => {
+      if (!(target instanceof Element)) return 'default';
+      if (target.closest('[data-cursor="lens"]')) return pointerDown ? 'lens-dragging' : 'lens-hover';
+      if (target.closest(interactiveSelector)) return 'interactive';
+      return 'default';
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      moveX(event.clientX);
+      moveY(event.clientY);
+      setMode(resolveMode(event.target));
+
+      window.cancelAnimationFrame(modeFrame);
+      modeFrame = window.requestAnimationFrame(() => {
+        setMode(resolveMode(document.elementFromPoint(event.clientX, event.clientY)));
       });
+
+      if (mode === 'lens-dragging') {
+        const velocityRotation = gsap.utils.clamp(-8, 8, (event.clientX - lastX) * 0.64);
+        gsap.to(cursorRotor, {
+          rotation: velocityRotation,
+          duration: 0.12,
+          ease: 'power2.out',
+          overwrite: 'auto',
+        });
+      }
+      lastX = event.clientX;
     };
 
-    const onMouseEnter = () => {
-      gsap.to(cursor, { scale: 0.5, opacity: 0.5, duration: 0.2 });
+    const onPointerDown = (event: PointerEvent) => {
+      pointerDown = true;
+      setMode(resolveMode(event.target));
     };
 
-    const onMouseLeave = () => {
-      gsap.to(cursor, { scale: 1, opacity: 1, duration: 0.2 });
+    const onCursorChange = (event: Event) => {
+      setMode(resolveMode(event.target));
     };
 
-    window.addEventListener('mousemove', onMouseMove);
+    const onPointerUp = (event: PointerEvent) => {
+      pointerDown = false;
+      setMode(resolveMode(event.target));
+    };
 
-    const interactiveElements = document.querySelectorAll('a, button, [role="button"], input, select, textarea');
-    interactiveElements.forEach(el => {
-      el.addEventListener('mouseenter', onMouseEnter);
-      el.addEventListener('mouseleave', onMouseLeave);
-    });
+    const resetCursor = () => {
+      pointerDown = false;
+      setMode('default');
+    };
+
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    window.addEventListener('pointerdown', onPointerDown, { passive: true });
+    window.addEventListener('portfolio-cursorchange', onCursorChange);
+    window.addEventListener('pointerup', onPointerUp, { passive: true });
+    window.addEventListener('pointercancel', resetCursor, { passive: true });
+    window.addEventListener('blur', resetCursor);
 
     return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      interactiveElements.forEach(el => {
-        el.removeEventListener('mouseenter', onMouseEnter);
-        el.removeEventListener('mouseleave', onMouseLeave);
-      });
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('portfolio-cursorchange', onCursorChange);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', resetCursor);
+      window.removeEventListener('blur', resetCursor);
+      window.cancelAnimationFrame(modeFrame);
+      gsap.killTweensOf([cursor, cursorBody, cursorRotor]);
+      context.revert();
     };
   }, []);
 
   return (
     <div
       ref={cursorRef}
-      className="fixed top-0 left-0 w-8 h-8 rounded-full bg-primary/45 pointer-events-none z-[80] transform -translate-x-1/2 -translate-y-1/2 mix-blend-difference backdrop-blur-sm hidden lg:block"
-    />
+      className="site-cursor"
+      data-mode="default"
+      aria-hidden="true"
+    >
+      <span ref={bodyRef} className="site-cursor-body">
+        <span ref={rotorRef} className="site-cursor-rotor">
+          <i className="site-cursor-arc is-a" />
+          <i className="site-cursor-arc is-b" />
+        </span>
+      </span>
+    </div>
   );
 }

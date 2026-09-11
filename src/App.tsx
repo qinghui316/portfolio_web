@@ -14,16 +14,18 @@ import SectionWhatIDo from './components/SectionWhatIDo';
 import SectionExperience from './components/SectionExperience';
 import SectionContact from './components/SectionContact';
 import { prepareAboutEssentials } from './components/about/aboutPreload';
+import { prepareProjectExperience } from './components/projects/projectAssets';
 import { getPortfolioVideoManifest, preloadImageAsset, preloadVideoAsset } from './lib/videoResources';
 
 const SectionProjects = lazy(() => import('./components/SectionProjects'));
 const BOOT_TIMEOUT_MS = 10000;
-const MIN_LOADING_MS = 1200;
+const MIN_LOADING_MS = 1650;
 const ABOUT_PRELOAD_MAX_WAIT_MS = 1000;
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isExitingLoading, setIsExitingLoading] = useState(false);
+  const [wordmarkComplete, setWordmarkComplete] = useState(false);
   const [assetsReady, setAssetsReady] = useState(false);
   const [heroWarmupReady, setHeroWarmupReady] = useState(false);
   const [aboutGateReady, setAboutGateReady] = useState(false);
@@ -75,24 +77,36 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let hashFrame = 0;
+
     if (isLoading) {
       lenisRef.current?.stop();
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
       lenisRef.current?.start();
-      const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
-      if (window.location.hash === '#about' && navigation?.type === 'navigate') {
-        const about = document.getElementById('about');
-        if (about) {
-          const top = about.getBoundingClientRect().top + window.scrollY - 80;
+      const hashId = decodeURIComponent(window.location.hash.slice(1));
+      if (hashId === 'about' || hashId === 'projects') {
+        let attempts = 0;
+        const positionHashTarget = () => {
+          const target = document.getElementById(hashId);
+          if (!target && attempts < 30) {
+            attempts += 1;
+            hashFrame = window.requestAnimationFrame(positionHashTarget);
+            return;
+          }
+          if (!target) return;
+          const offset = hashId === 'projects' ? 0 : 80;
+          const top = target.getBoundingClientRect().top + window.scrollY - offset;
           if (lenisRef.current) lenisRef.current.scrollTo(top, { immediate: true });
           else window.scrollTo(0, top);
-        }
+        };
+        hashFrame = window.requestAnimationFrame(positionHashTarget);
       }
     }
 
     return () => {
+      window.cancelAnimationFrame(hashFrame);
       document.body.style.overflow = '';
     };
   }, [isLoading]);
@@ -190,7 +204,16 @@ export default function App() {
   }, [assetsReady]);
 
   useEffect(() => {
+    if (isLoading) return;
+    const timer = window.setTimeout(() => {
+      void prepareProjectExperience().catch(() => undefined);
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [isLoading]);
+
+  useEffect(() => {
     if (!isLoading || isExitingLoading) return;
+    if (!wordmarkComplete) return;
     if (!bootTimedOut && (!assetsReady || !heroWarmupReady || !aboutGateReady)) return;
 
     const elapsed = Date.now() - loadingStartedAtRef.current;
@@ -198,15 +221,22 @@ export default function App() {
     const finishTimer = window.setTimeout(() => {
       setProgress(100, 'Launching...');
       setIsExitingLoading(true);
-      window.setTimeout(() => setIsLoading(false), 700);
+      window.setTimeout(() => setIsLoading(false), 880);
     }, waitForMinimum);
 
     return () => window.clearTimeout(finishTimer);
-  }, [aboutGateReady, assetsReady, bootTimedOut, heroWarmupReady, isExitingLoading, isLoading, setProgress]);
+  }, [aboutGateReady, assetsReady, bootTimedOut, heroWarmupReady, isExitingLoading, isLoading, setProgress, wordmarkComplete]);
 
   return (
     <div className="bg-canvas min-h-screen text-ink overflow-x-hidden font-sans">
-      {isLoading && <Loading progress={bootProgress} status={bootStatus} isExiting={isExitingLoading} />}
+      {isLoading && (
+        <Loading
+          progress={bootProgress}
+          status={bootStatus}
+          isExiting={isExitingLoading}
+          onWordmarkComplete={() => setWordmarkComplete(true)}
+        />
+      )}
 
       <Cursor />
 
