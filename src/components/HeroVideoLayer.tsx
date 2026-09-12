@@ -10,6 +10,7 @@ const CENTER_DEAD_ZONE = 0.03;
 const SEEK_INTERVAL_MS = 1000 / 30;
 
 type HeroVideoLayerProps = {
+  mediaEnabled?: boolean;
   onWarmupProgress?: (progress: number) => void;
   onWarmupComplete?: () => void;
 };
@@ -72,7 +73,7 @@ const seekTo = (video: HTMLVideoElement, time: number) =>
     video.currentTime = time;
   });
 
-export default function HeroVideoLayer({ onWarmupProgress, onWarmupComplete }: HeroVideoLayerProps) {
+export default function HeroVideoLayer({ onWarmupProgress, onWarmupComplete, mediaEnabled = true }: HeroVideoLayerProps) {
   const layerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [canShowVideo, setCanShowVideo] = useState(false);
@@ -210,7 +211,7 @@ export default function HeroVideoLayer({ onWarmupProgress, onWarmupComplete }: H
     >
       <img
         className="hero-video-poster"
-        src={posterUrl}
+        src={mediaEnabled ? posterUrl : undefined}
         alt=""
         draggable={false}
         onError={() => {
@@ -218,7 +219,7 @@ export default function HeroVideoLayer({ onWarmupProgress, onWarmupComplete }: H
         }}
       />
 
-      {videoUrl && !videoFailed && (
+      {mediaEnabled && videoUrl && !videoFailed && (
         <video
           ref={videoRef}
           className={`hero-video ${canShowVideo ? 'is-ready' : ''}`}

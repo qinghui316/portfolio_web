@@ -5,6 +5,7 @@ import atlasUrl from '../../assets/projects/project-atlas.webp';
 import embeddingCover from '../../assets/projects/qwen-embedding.webp';
 import videoCover from '../../assets/projects/video-fast-clip.webp';
 import yaoxiaohuiCover from '../../assets/projects/yaoxiaohui.webp';
+import { useSyncExternalStore } from 'react';
 
 export const projectAssets = {
   atlas: atlasUrl,
@@ -19,18 +20,23 @@ export const projectAssets = {
 } as const;
 
 let preloadPromise: Promise<void> | null = null;
+let started = false;
+const listeners = new Set<() => void>();
+const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
+export const useProjectAssetsStarted = () => useSyncExternalStore(subscribe, () => started, () => false);
 
 const decodeImage = (src: string) =>
   new Promise<void>((resolve, reject) => {
     const image = new Image();
     image.decoding = 'async';
-    image.onload = () => resolve();
+    image.onload = () => { void image.decode().then(resolve, reject); };
     image.onerror = () => reject(new Error(`Unable to preload project image: ${src}`));
     image.src = src;
   });
 
 export const prepareProjectExperience = () => {
   if (preloadPromise) return preloadPromise;
+  started = true; listeners.forEach(listener => listener());
   preloadPromise = Promise.all([
     import('./InfiniteProjectMenu'),
     ...Object.values(projectAssets.covers).map(decodeImage),

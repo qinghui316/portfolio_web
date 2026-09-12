@@ -1,0 +1,15 @@
+{
+  "phone": {
+    "aspect": 0.6666666666666666,
+    "anchorX": 0.62,
+    "bottom": 0.06,
+    "heightSvh": 66
+  },
+  "email": {
+    "aspect": 1,
+    "anchorX": 0.35,
+    "bottom": 0.06,
+    "widthSvh": 29
+  },
+  "groundHeight": 0.28
+}

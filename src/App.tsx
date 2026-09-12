@@ -14,6 +14,7 @@ import SectionWhatIDo from './components/SectionWhatIDo';
 import SectionExperience from './components/SectionExperience';
 import SectionContact from './components/SectionContact';
 import { prepareAboutEssentials } from './components/about/aboutPreload';
+import { prepareContactEssentials, prepareContactInteractive, subscribeContactAssetState } from './components/contact/contactAssets';
 import { prepareProjectExperience } from './components/projects/projectAssets';
 import { getPortfolioVideoManifest, preloadImageAsset, preloadVideoAsset } from './lib/videoResources';
 
@@ -23,6 +24,9 @@ const MIN_LOADING_MS = 1650;
 const ABOUT_PRELOAD_MAX_WAIT_MS = 1000;
 
 export default function App() {
+  const [contactEntry] = useState(() => window.location.hash === '#contact');
+  const [mediaEnabled, setMediaEnabled] = useState(!contactEntry);
+  const [contactGateReady, setContactGateReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isExitingLoading, setIsExitingLoading] = useState(false);
   const [wordmarkComplete, setWordmarkComplete] = useState(false);
@@ -86,7 +90,7 @@ export default function App() {
       document.body.style.overflow = '';
       lenisRef.current?.start();
       const hashId = decodeURIComponent(window.location.hash.slice(1));
-      if (hashId === 'about' || hashId === 'projects') {
+      if (hashId === 'about' || hashId === 'projects' || hashId === 'contact') {
         let attempts = 0;
         const positionHashTarget = () => {
           const target = document.getElementById(hashId);
@@ -96,8 +100,9 @@ export default function App() {
             return;
           }
           if (!target) return;
-          const offset = hashId === 'projects' ? 0 : 80;
+          const offset = hashId === 'about' ? 80 : 0;
           const top = target.getBoundingClientRect().top + window.scrollY - offset;
+          lenisRef.current?.resize();
           if (lenisRef.current) lenisRef.current.scrollTo(top, { immediate: true });
           else window.scrollTo(0, top);
         };
@@ -112,6 +117,7 @@ export default function App() {
   }, [isLoading]);
 
   useEffect(() => {
+    if (!mediaEnabled) return;
     let cancelled = false;
     const manifest = getPortfolioVideoManifest();
 
@@ -140,6 +146,7 @@ export default function App() {
       setProgress(20, 'Preloading hero video...');
       const heroVideoUrl = await preloadVideoAsset(manifest.heroVideo);
       if (cancelled) return;
+      void prepareContactEssentials();
 
       setProgress(55, 'Preloading work video...');
       const scrollVideoUrl = await preloadVideoAsset(manifest.scrollVideo);
@@ -170,17 +177,42 @@ export default function App() {
       setAssetsReady(true);
     });
 
-    const timeoutId = window.setTimeout(() => {
-      if (cancelled) return;
-      setBootTimedOut(true);
-      setProgress(98, 'Entering with available media...');
-    }, BOOT_TIMEOUT_MS);
-
     return () => {
       cancelled = true;
-      window.clearTimeout(timeoutId);
     };
-  }, [setProgress]);
+  }, [mediaEnabled, setProgress]);
+
+  useEffect(() => {
+    if (!isLoading) return;
+    const timer = window.setTimeout(() => { setBootTimedOut(true); setProgress(98, 'Entering with available media...'); }, BOOT_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [isLoading, setProgress]);
+
+  useEffect(() => {
+    if (!contactEntry) return;
+    let cancelled = false;
+    setProgress(8, 'Preparing contact...');
+    const unsubscribe = subscribeContactAssetState(state => {
+      const ready = [state.terrain,state.phoneClosed,state.emailClosed,state.fonts].filter(value => value === 'ready' || value === 'failed').length;
+      setProgress(8 + ready * 21, 'Preparing contact...');
+    });
+    void prepareContactEssentials('high').then(() => { if (!cancelled) { setContactGateReady(true); setProgress(95, 'Contact ready'); } });
+    return () => { cancelled = true; unsubscribe(); };
+  }, [contactEntry, setProgress]);
+
+  useEffect(() => {
+    if (assetsReady && !contactEntry) void prepareContactEssentials();
+  }, [assetsReady, contactEntry]);
+
+  useEffect(() => {
+    if (!contactEntry || mediaEnabled || isLoading) return;
+    const promoteMedia = () => {
+      const chapter = document.querySelector('.night-chapter');
+      if (chapter && chapter.getBoundingClientRect().top > window.innerHeight * .5) setMediaEnabled(true);
+    };
+    window.addEventListener('scroll', promoteMedia, { passive: true });
+    return () => window.removeEventListener('scroll', promoteMedia);
+  }, [contactEntry, mediaEnabled, isLoading]);
 
   useEffect(() => {
     if (!assetsReady) return;
@@ -205,27 +237,41 @@ export default function App() {
 
   useEffect(() => {
     if (isLoading) return;
+    let idleHandle: number | undefined;
+    let cancelled = false;
     const timer = window.setTimeout(() => {
-      void prepareProjectExperience().catch(() => undefined);
+      const warmContact = () => {
+        void prepareContactEssentials().then(prepareContactInteractive).then(() => {
+          if (cancelled) return;
+          void prepareProjectExperience().catch(() => undefined);
+          if (contactEntry) setMediaEnabled(true);
+        });
+      };
+      if ('requestIdleCallback' in window) idleHandle = window.requestIdleCallback(warmContact, { timeout: 800 });
+      else warmContact();
     }, 120);
-    return () => window.clearTimeout(timer);
-  }, [isLoading]);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      if (idleHandle !== undefined) window.cancelIdleCallback(idleHandle);
+    };
+  }, [contactEntry, isLoading]);
 
   useEffect(() => {
     if (!isLoading || isExitingLoading) return;
     if (!wordmarkComplete) return;
-    if (!bootTimedOut && (!assetsReady || !heroWarmupReady || !aboutGateReady)) return;
+    if (!bootTimedOut && (contactEntry ? !contactGateReady : (!assetsReady || !heroWarmupReady || !aboutGateReady))) return;
 
     const elapsed = Date.now() - loadingStartedAtRef.current;
     const waitForMinimum = Math.max(0, MIN_LOADING_MS - elapsed);
     const finishTimer = window.setTimeout(() => {
       setProgress(100, 'Launching...');
       setIsExitingLoading(true);
-      window.setTimeout(() => setIsLoading(false), 880);
+      window.setTimeout(() => { performance.mark('boot:revealed'); setIsLoading(false); }, 880);
     }, waitForMinimum);
 
     return () => window.clearTimeout(finishTimer);
-  }, [aboutGateReady, assetsReady, bootTimedOut, heroWarmupReady, isExitingLoading, isLoading, setProgress, wordmarkComplete]);
+  }, [aboutGateReady, assetsReady, bootTimedOut, contactEntry, contactGateReady, heroWarmupReady, isExitingLoading, isLoading, setProgress, wordmarkComplete]);
 
   return (
     <div className="bg-canvas min-h-screen text-ink overflow-x-hidden font-sans">
@@ -245,8 +291,9 @@ export default function App() {
         className={`relative group ${isLoading ? 'pointer-events-none select-none' : ''}`}
         inert={isLoading || undefined}
       >
-        <NarrativeVideoLayer />
+        <NarrativeVideoLayer mediaEnabled={mediaEnabled} />
         <SectionHero
+          mediaEnabled={mediaEnabled}
           onHeroWarmupProgress={(progress) => {
             if (!assetsReady) return;
             setProgress(75 + progress * 20, 'Warming hero interaction...');
@@ -259,10 +306,12 @@ export default function App() {
         <SectionAbout />
         <SectionWhatIDo />
         <SectionExperience />
-        <Suspense fallback={<div className="min-h-screen bg-surface-dark" />}>
-          <SectionProjects />
-        </Suspense>
-        <SectionContact />
+        <div className="night-chapter">
+          <Suspense fallback={<div className="min-h-screen bg-transparent" />}>
+            <SectionProjects />
+          </Suspense>
+          <SectionContact preloadEnabled={!isLoading} />
+        </div>
       </main>
     </div>
   );

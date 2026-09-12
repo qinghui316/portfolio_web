@@ -9,13 +9,14 @@ import {
   wrapIndex,
 } from './projectOrbitMath';
 import './InfiniteProjectMenu.css';
+import { DemandFrames } from './demandFrames';
 
 const backgroundVertShaderSource = `#version 300 es
 precision highp float;
 out vec2 vUv;
 void main() {
     vec2 position = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
-    vUv = position * 0.5;
+    vUv = position;
     gl_Position = vec4(position * 2.0 - 1.0, 0.0, 1.0);
 }
 `;
@@ -31,34 +32,38 @@ out vec4 outColor;
 void main() {
     vec2 aspect = vec2(uResolution.x / max(uResolution.y, 1.0), 1.0);
     vec2 base = (vUv - 0.5) * aspect;
-    vec2 p = base;
     vec2 mouse = (uMouse - 0.5) * aspect;
     float response = uPointerEnergy * mix(1.0, 0.35, uOrbitEnergy);
-    for (float i = 1.0; i <= 5.0; i += 1.0) {
-        p.x += 0.021 / i * cos(i * 2.15 * p.y + response * uMouse.x * 3.14159);
-        p.y += 0.017 / i * sin(i * 1.82 * p.x + response * uMouse.y * 3.14159);
-    }
-    vec2 delta = p - mouse;
+    vec2 delta = base - mouse;
     float distanceToPointer = length(delta);
-    float localField = exp(-distanceToPointer * 7.5) * response;
-    float ripple = sin(distanceToPointer * 28.0 - response * 2.8) * 0.010 * localField;
-    p += normalize(delta + vec2(0.0001)) * ripple;
-    float baseFolds = sin(base.x * 7.3 + sin(base.y * 5.2) * 0.72);
-    float activeFolds = sin(p.x * 8.5 + sin(p.y * 6.1) * 1.2 + localField * 2.4);
-    float ridge = mix(pow(1.0 - abs(baseFolds), 7.0), pow(1.0 - abs(activeFolds), 6.0), localField);
-    float wake = exp(-distanceToPointer * 4.8) * response;
-    float diagonalFold = pow(max(0.0, 1.0 - abs(delta.x * 0.78 + delta.y * 0.52) * 10.5), 4.0) * wake;
-    float broadReflection = 0.5 + 0.5 * sin(base.x * 2.1 - base.y * 2.7);
-    float vignette = smoothstep(0.94, 0.18, length((vUv - 0.5) * vec2(1.0, 1.18)));
-    vec3 color = vec3(0.052, 0.052, 0.049);
-    color += vec3(0.048, 0.046, 0.042) * broadReflection * 0.22;
-    color += vec3(0.91, 0.88, 0.80) * ridge * (0.007 + localField * 0.082);
-    color += vec3(0.80, 0.34, 0.22) * ridge * (0.009 + localField * 0.118);
-    color += vec3(0.16, 0.48, 0.44) * localField * ridge * 0.022;
-    color += vec3(0.88, 0.85, 0.78) * diagonalFold * 0.092;
-    color += vec3(0.80, 0.34, 0.22) * diagonalFold * 0.128;
-    color *= 0.80 + vignette * 0.20;
-    outColor = vec4(color, 0.9);
+    float localField = exp(-distanceToPointer * 8.2) * response;
+
+    float terrain = sin(base.x * 5.2 + sin(base.y * 3.1) * 1.05);
+    terrain += sin(base.y * 7.4 - base.x * 1.8) * 0.43;
+    terrain += sin((base.x + base.y) * 11.0) * 0.12;
+    float contourDistance = abs(fract(terrain * 0.72 + 0.5) - 0.5);
+    float contour = 1.0 - smoothstep(0.025, 0.062, contourDistance);
+
+    vec2 grid = floor((base + vec2(4.0)) * vec2(5.0, 6.0));
+    vec2 cell = fract((base + vec2(4.0)) * vec2(5.0, 6.0)) - 0.5;
+    float hash = fract(sin(dot(grid, vec2(127.1, 311.7))) * 43758.5453);
+    float node = (1.0 - smoothstep(0.035, 0.075, length(cell))) * step(0.82, hash);
+
+    float routeA = 1.0 - smoothstep(0.008, 0.022, abs(base.y + base.x * 0.18 - 0.12));
+    float routeB = 1.0 - smoothstep(0.007, 0.020, abs(base.y - base.x * 0.11 + 0.29));
+    float routes = max(routeA, routeB) * 0.42;
+    float pointerPulse = 1.0 - smoothstep(0.0, 0.028, abs(distanceToPointer - 0.12));
+    float vignette = 1.0 - smoothstep(0.2, 1.0, length((vUv - 0.5) * vec2(1.0, 1.15)));
+    float bottomBlend = smoothstep(0.0, 0.18, vUv.y);
+
+    vec3 color = vec3(16.0, 17.0, 15.0) / 255.0;
+    color += vec3(0.86, 0.84, 0.77) * contour * (0.018 + localField * 0.038);
+    color += vec3(0.80, 0.34, 0.22) * routes * 0.012;
+    color += vec3(0.80, 0.34, 0.22) * (contour + routes) * localField * 0.20;
+    color += vec3(0.22, 0.62, 0.56) * node * (0.055 + localField * 0.34);
+    color += vec3(0.80, 0.34, 0.22) * pointerPulse * localField * 0.13;
+    float alpha = 0.94 * bottomBlend;
+    outColor = vec4(color * alpha, alpha);
 }
 `;
 
@@ -468,12 +473,14 @@ class OrbitControl {
   private previousAmbientTime = 0;
   private samples: PointerSample[] = [];
   private activePointerId: number | null = null;
+  private quietMilliseconds = 0;
 
   constructor(
     private canvas: HTMLCanvasElement,
     private interactionSurface: HTMLElement,
     initialProgress: number,
     private canStartDrag: (event: PointerEvent) => boolean,
+    private invalidate: () => void,
   ) {
     this.progress = initialProgress;
     canvas.addEventListener('pointerdown', this.handlePointerDown);
@@ -488,6 +495,7 @@ class OrbitControl {
   }
 
   public destroy(): void {
+    this.suspend();
     this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
     this.canvas.removeEventListener('pointerup', this.handlePointerUp);
     this.canvas.removeEventListener('pointercancel', this.handlePointerCancel);
@@ -501,12 +509,14 @@ class OrbitControl {
   public focusItem(index: number, count: number): void {
     this.targetProgress = getOrbitTargetForIndex(this.progress, index, count);
     this.velocity = 0;
+    this.invalidate();
   }
 
   public update(deltaTime: number): void {
     const dt = Math.min(0.033, Math.max(0.001, deltaTime / 1000));
+    this.quietMilliseconds += deltaTime;
     this.pointerEnergy += (0 - this.pointerEnergy) * Math.min(1, dt * 3.4);
-    if (this.pointerEnergy < 0.0025) this.pointerEnergy = 0;
+    if (this.pointerEnergy < 0.0025 || this.quietMilliseconds >= 900) this.pointerEnergy = 0;
     if (this.isPointerDown) return;
 
     if (this.targetProgress == null) {
@@ -534,6 +544,7 @@ class OrbitControl {
   }
 
   private updatePointerFeedback(event: PointerEvent): void {
+    this.quietMilliseconds = 0;
     const rect = this.interactionSurface.getBoundingClientRect();
     const now = performance.now();
     if (this.previousAmbientTime > 0) {
@@ -552,6 +563,7 @@ class OrbitControl {
       Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(1, rect.width))),
       Math.max(0, Math.min(1, 1 - (event.clientY - rect.top) / Math.max(1, rect.height))),
     );
+    this.invalidate();
   }
 
   private readonly handlePointerDown = (event: PointerEvent) => {
@@ -585,6 +597,7 @@ class OrbitControl {
     const now = performance.now();
     this.samples.push({ progress: this.progress, time: now });
     this.samples = this.samples.filter(sample => now - sample.time <= 80);
+    this.invalidate();
   };
 
   private readonly handlePointerUp = (event: PointerEvent) => {
@@ -597,6 +610,8 @@ class OrbitControl {
     this.isPointerDown = false;
     this.activePointerId = null;
     this.samples = [];
+    if (this.canvas.hasPointerCapture(event.pointerId)) this.canvas.releasePointerCapture(event.pointerId);
+    this.invalidate();
   };
 
   private readonly handlePointerCancel = () => {
@@ -606,11 +621,22 @@ class OrbitControl {
     this.samples = [];
     this.velocity = 0;
     this.targetProgress = Math.round(this.progress);
+    this.invalidate();
   };
+
+  public suspend(): void {
+    const pointerId = this.activePointerId;
+    this.isPointerDown = false; this.activePointerId = null; this.samples = [];
+    this.previousAmbientTime = 0; this.pointerEnergy = 0;
+    if (pointerId !== null && this.canvas.hasPointerCapture(pointerId)) this.canvas.releasePointerCapture(pointerId);
+    this.canvas.dataset.cursor = 'default';
+    this.canvas.dispatchEvent(new Event('portfolio-cursorchange', { bubbles: true }));
+  }
 
   private readonly handlePointerLeave = () => {
     this.previousAmbientTime = 0;
     if (!this.isPointerDown) this.pointerEnergy *= 0.4;
+    this.invalidate();
   };
 
   private readonly handleWindowBlur = () => this.handlePointerCancel();
@@ -658,9 +684,9 @@ class InfiniteGridMenu {
   private worldMatrix = mat4.create();
   private tex: WebGLTexture | null = null;
   private control!: OrbitControl;
-  private animationFrame = 0;
+  private frames = new DemandFrames(delta => this.drawFrame(delta));
   private destroyed = false;
-  private running = false;
+  private textureReady = false;
   private activeItemIndex = -1;
   private activeSlot = 0;
 
@@ -757,35 +783,30 @@ class InfiniteGridMenu {
       this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight);
     }
     this.updateProjectionMatrix();
+    this.frames.invalidate();
   }
 
-  public run(time = 0): void {
-    if (this.destroyed || !this.running) return;
-    this._deltaTime = Math.min(32, time - this._time);
-    this._time = time;
+  private drawFrame(delta: number): boolean {
+    if (this.destroyed || !this.textureReady) return false;
+    this._deltaTime = delta;
     this._deltaFrames = this._deltaTime / this.TARGET_FRAME_DURATION;
     this._frames += this._deltaFrames;
 
     this.animate(this._deltaTime);
     this.render();
 
-    this.animationFrame = requestAnimationFrame(t => this.run(t));
+    return this.control.isPointerDown || this.control.targetProgress !== null || Math.abs(this.control.velocity) > .0001 || this.control.pointerEnergy > 0 || Math.abs(this.camera.position[2] - this.restCameraDistance) > .0005;
   }
 
   public setRunning(running: boolean): void {
-    if (this.destroyed || this.running === running) return;
-    this.running = running;
-    if (running) {
-      this._time = performance.now();
-      this.animationFrame = requestAnimationFrame(time => this.run(time));
-    } else {
-      cancelAnimationFrame(this.animationFrame);
-    }
+    if (this.destroyed) return;
+    if (!running) this.control?.suspend();
+    this.frames.setActive(running);
   }
 
   public destroy(): void {
     this.destroyed = true;
-    cancelAnimationFrame(this.animationFrame);
+    this.frames.destroy();
     this.control?.destroy();
     this.onMovementChange(false);
     if (this.gl) {
@@ -927,6 +948,7 @@ class InfiniteGridMenu {
       interactionSurface,
       this.initialItemIndex,
       event => this.pickLens(event.clientX, event.clientY) != null,
+      this.frames.invalidate,
     );
 
     this.updateCameraMatrix();
@@ -951,6 +973,10 @@ class InfiniteGridMenu {
       gl.bindTexture(gl.TEXTURE_2D, this.tex);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
       gl.generateMipmap(gl.TEXTURE_2D);
+      this.textureReady = true;
+      this.animate(0);
+      this.render();
+      this.frames.invalidate();
       this.onTextureReady(true);
     };
     image.onerror = () => this.onTextureReady(false);
@@ -1215,15 +1241,20 @@ const InfiniteProjectMenu: FC<InfiniteProjectMenuProps> = ({
     window.addEventListener('resize', handleResize);
     handleResize();
 
-    const observer = new IntersectionObserver(
-      entries => sketch?.setRunning(entries[0]?.isIntersecting ?? false),
-      { rootMargin: '100% 0px' },
-    );
+    let visible = false;
+    const updateRunning = () => {
+      const running = visible && !document.hidden;
+      if (!running) pointerStart.current = null;
+      sketch?.setRunning(running);
+    };
+    const observer = new IntersectionObserver(entries => { visible = entries[0]?.isIntersecting ?? false; updateRunning(); });
+    document.addEventListener('visibilitychange', updateRunning);
     observer.observe(canvas);
 
     return () => {
       window.removeEventListener('resize', handleResize);
       observer.disconnect();
+      document.removeEventListener('visibilitychange', updateRunning);
       window.cancelAnimationFrame(hoverFrame.current);
       canvas.dataset.cursor = 'default';
       sketch?.destroy();

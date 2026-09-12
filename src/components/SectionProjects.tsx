@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUpRight, ChevronLeft, ChevronRight, CircleDashed } from 'lucide-react';
 
 import InfiniteProjectMenu, { type InfiniteMenuItem } from './projects/InfiniteProjectMenu';
-import { projectAssets } from './projects/projectAssets';
+import { projectAssets, useProjectAssetsStarted } from './projects/projectAssets';
 
 const {
   atlas: atlasUrl,
@@ -55,6 +55,8 @@ export default function SectionProjects() {
   const [menuReady, setMenuReady] = useState(false);
   const [webglAvailable, setWebglAvailable] = useState(true);
   const [isOrbiting, setIsOrbiting] = useState(false);
+  const assetsStarted = useProjectAssetsStarted();
+  const [near, setNear] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const wideLayout = useMediaQuery('(min-width: 900px)');
   const desktopPointer = useMediaQuery('(min-width: 900px) and (pointer: fine)');
@@ -155,12 +157,18 @@ export default function SectionProjects() {
   );
 
   useEffect(() => {
+    if (!assetsStarted) return;
     const canvas = document.createElement('canvas');
-    setWebglAvailable(Boolean(canvas.getContext('webgl2')));
-  }, []);
+    const gl = canvas.getContext('webgl2');
+    setWebglAvailable(Boolean(gl));
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setNear(true); observer.disconnect(); } }, { rootMargin: '100% 0px' });
+    if (stageRef.current) observer.observe(stageRef.current);
+    return () => observer.disconnect();
+  }, [assetsStarted]);
 
   const activeProject = projects[activeIndex];
-  const useInteractiveMenu = desktopPointer && !reducedMotion && webglAvailable;
+  const useInteractiveMenu = desktopPointer && !reducedMotion && webglAvailable && assetsStarted && near;
 
   const selectProject = useCallback((index: number) => {
     setActiveIndex(index);
@@ -201,7 +209,7 @@ export default function SectionProjects() {
             onClick={() => setActiveIndex(index)}
             aria-label={`选择项目：${project.title}`}
           >
-            <img src={project.image} alt="" />
+            <img src={assetsStarted ? project.image : undefined} alt="" />
           </button>
         );
       })}
@@ -211,7 +219,7 @@ export default function SectionProjects() {
         onClick={() => openProject(activeIndex)}
         aria-label={activeProject.primaryLink ? `打开项目：${activeProject.title}` : activeProject.title}
       >
-        <img src={activeProject.image} alt={activeProject.coverAlt} />
+        <img src={assetsStarted ? activeProject.image : undefined} alt={activeProject.coverAlt} />
       </button>
     </div>
   );
@@ -264,7 +272,7 @@ export default function SectionProjects() {
                   aria-label={`选择项目：${project.title}`}
                   aria-pressed={index === activeIndex}
                 >
-                  <img src={project.image} alt={project.coverAlt} />
+                  <img src={assetsStarted ? project.image : undefined} alt={project.coverAlt} />
                   <span>{String(index + 1).padStart(2, '0')}</span>
                 </button>
               ))}

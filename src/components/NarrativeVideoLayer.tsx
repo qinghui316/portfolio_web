@@ -202,7 +202,7 @@ const mapScrollToState = (scrollY: number): NarrativeState => {
   });
 };
 
-export default function NarrativeVideoLayer() {
+export default function NarrativeVideoLayer({ mediaEnabled = true }: { mediaEnabled?: boolean }) {
   const layerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const targetTimeRef = useRef(0);
@@ -252,7 +252,7 @@ export default function NarrativeVideoLayer() {
     const what = document.querySelector<HTMLElement>('.what-i-do-section');
     const experience = document.querySelector<HTMLElement>('#experience, .experience-section');
 
-    if (!layer || !video || !hero || !what || !canUseMotion || !videoUrl || videoFailed) return;
+    if (!mediaEnabled || !layer || !video || !hero || !what || !canUseMotion || !videoUrl || videoFailed) return;
 
     let rafId = 0;
     let lastSeekAt = 0;
@@ -434,7 +434,7 @@ export default function NarrativeVideoLayer() {
       document.documentElement.style.removeProperty('--hero-exit-opacity');
       document.documentElement.style.removeProperty('--hero-scrub-opacity');
     };
-  }, [canUseMotion, videoUrl, videoFailed]);
+  }, [canUseMotion, mediaEnabled, videoUrl, videoFailed]);
 
   const handleVideoError = () => {
     const nextUrl = getNextCandidateUrl(manifest.scrollVideo, videoUrl);
@@ -454,14 +454,14 @@ export default function NarrativeVideoLayer() {
     <div ref={layerRef} className={`narrative-video-layer ${videoReady ? 'has-video' : ''}`} aria-hidden="true">
       <img
         className="narrative-video-poster"
-        src={posterUrl}
+        src={mediaEnabled ? posterUrl : undefined}
         alt=""
         draggable={false}
         onError={() => {
           if (posterUrl !== manifest.scrollPoster.fallbackUrl) setPosterUrl(manifest.scrollPoster.fallbackUrl);
         }}
       />
-      {videoUrl && !videoFailed && (
+      {mediaEnabled && videoUrl && !videoFailed && (
         <video
           ref={videoRef}
           className={`narrative-video ${videoReady ? 'is-ready' : ''}`}
