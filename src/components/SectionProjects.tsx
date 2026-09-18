@@ -3,6 +3,9 @@ import { ArrowUpRight, ChevronLeft, ChevronRight, CircleDashed } from 'lucide-re
 
 import InfiniteProjectMenu, { type InfiniteMenuItem } from './projects/InfiniteProjectMenu';
 import { projectAssets, useProjectAssetsStarted } from './projects/projectAssets';
+import { particleSeeds } from './projects/particleField';
+
+const staticParticles = particleSeeds(60);
 
 const {
   atlas: atlasUrl,
@@ -227,6 +230,9 @@ export default function SectionProjects() {
   return (
     <section className="projects-section" id="projects" aria-labelledby="projects-title">
       <div className="projects-grid-overlay" aria-hidden="true" />
+      <div className={`projects-particle-fallback ${menuReady && useInteractiveMenu ? 'is-hidden' : ''}`} aria-hidden="true">
+        {Array.from({ length: 60 }, (_, i) => <i key={i} style={{ left: `${staticParticles[i*4]*100}%`, bottom: `${staticParticles[i*4+1]*86+14}%`, opacity: .12 + staticParticles[i*4+3]*.13 }} />)}
+      </div>
 
       <header className="projects-heading">
         <p>Selected systems</p>

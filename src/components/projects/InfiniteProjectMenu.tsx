@@ -10,6 +10,7 @@ import {
 } from './projectOrbitMath';
 import './InfiniteProjectMenu.css';
 import { DemandFrames } from './demandFrames';
+import { ParticleField, PARTICLE_CONFIG } from './particleField';
 
 const backgroundVertShaderSource = `#version 300 es
 precision highp float;
@@ -30,40 +31,11 @@ uniform float uOrbitEnergy;
 in vec2 vUv;
 out vec4 outColor;
 void main() {
-    vec2 aspect = vec2(uResolution.x / max(uResolution.y, 1.0), 1.0);
-    vec2 base = (vUv - 0.5) * aspect;
-    vec2 mouse = (uMouse - 0.5) * aspect;
-    float response = uPointerEnergy * mix(1.0, 0.35, uOrbitEnergy);
-    vec2 delta = base - mouse;
-    float distanceToPointer = length(delta);
-    float localField = exp(-distanceToPointer * 8.2) * response;
-
-    float terrain = sin(base.x * 5.2 + sin(base.y * 3.1) * 1.05);
-    terrain += sin(base.y * 7.4 - base.x * 1.8) * 0.43;
-    terrain += sin((base.x + base.y) * 11.0) * 0.12;
-    float contourDistance = abs(fract(terrain * 0.72 + 0.5) - 0.5);
-    float contour = 1.0 - smoothstep(0.025, 0.062, contourDistance);
-
-    vec2 grid = floor((base + vec2(4.0)) * vec2(5.0, 6.0));
-    vec2 cell = fract((base + vec2(4.0)) * vec2(5.0, 6.0)) - 0.5;
-    float hash = fract(sin(dot(grid, vec2(127.1, 311.7))) * 43758.5453);
-    float node = (1.0 - smoothstep(0.035, 0.075, length(cell))) * step(0.82, hash);
-
-    float routeA = 1.0 - smoothstep(0.008, 0.022, abs(base.y + base.x * 0.18 - 0.12));
-    float routeB = 1.0 - smoothstep(0.007, 0.020, abs(base.y - base.x * 0.11 + 0.29));
-    float routes = max(routeA, routeB) * 0.42;
-    float pointerPulse = 1.0 - smoothstep(0.0, 0.028, abs(distanceToPointer - 0.12));
-    float vignette = 1.0 - smoothstep(0.2, 1.0, length((vUv - 0.5) * vec2(1.0, 1.15)));
-    float bottomBlend = smoothstep(0.0, 0.18, vUv.y);
-
+    float bottomBlend = smoothstep(0.0, 0.14, vUv.y);
+    float plane = smoothstep(-.5,1.5,vUv.x*.45+vUv.y);
     vec3 color = vec3(16.0, 17.0, 15.0) / 255.0;
-    color += vec3(0.86, 0.84, 0.77) * contour * (0.018 + localField * 0.038);
-    color += vec3(0.80, 0.34, 0.22) * routes * 0.012;
-    color += vec3(0.80, 0.34, 0.22) * (contour + routes) * localField * 0.20;
-    color += vec3(0.22, 0.62, 0.56) * node * (0.055 + localField * 0.34);
-    color += vec3(0.80, 0.34, 0.22) * pointerPulse * localField * 0.13;
-    float alpha = 0.94 * bottomBlend;
-    outColor = vec4(color * alpha, alpha);
+    color += vec3(.015,.017,.017)*plane*bottomBlend;
+    outColor = vec4(color, 1.0);
 }
 `;
 
@@ -467,6 +439,8 @@ class OrbitControl {
   public targetProgress: number | null = null;
   public pointerUv = vec2.fromValues(0.5, 0.5);
   public pointerEnergy = 0;
+  public pointerDirection = vec2.fromValues(1, 0);
+  private inputEnergy = 0;
 
   private previousPointer = vec2.create();
   private previousAmbientPointer = vec2.create();
@@ -515,8 +489,8 @@ class OrbitControl {
   public update(deltaTime: number): void {
     const dt = Math.min(0.033, Math.max(0.001, deltaTime / 1000));
     this.quietMilliseconds += deltaTime;
-    this.pointerEnergy += (0 - this.pointerEnergy) * Math.min(1, dt * 3.4);
-    if (this.pointerEnergy < 0.0025 || this.quietMilliseconds >= 900) this.pointerEnergy = 0;
+    const recovery = Math.min(1, this.quietMilliseconds / PARTICLE_CONFIG.decayMs);
+    this.pointerEnergy = this.inputEnergy * (1 - recovery) * (1 - recovery);
     if (this.isPointerDown) return;
 
     if (this.targetProgress == null) {
@@ -554,8 +528,12 @@ class OrbitControl {
       );
       const elapsed = Math.max(8, now - this.previousAmbientTime);
       const speed = distance / elapsed;
-      this.pointerEnergy = Math.max(this.pointerEnergy, Math.min(1, Math.max(0.12, speed * 0.9)));
+      if (distance > .01) {
+        vec2.set(this.pointerDirection, (event.clientX-this.previousAmbientPointer[0])/distance, -(event.clientY-this.previousAmbientPointer[1])/distance);
+        this.pointerEnergy = Math.max(this.pointerEnergy, Math.min(1, speed * .9));
+      }
     }
+    this.inputEnergy = this.pointerEnergy;
     vec2.set(this.previousAmbientPointer, event.clientX, event.clientY);
     this.previousAmbientTime = now;
     vec2.set(
@@ -627,7 +605,7 @@ class OrbitControl {
   public suspend(): void {
     const pointerId = this.activePointerId;
     this.isPointerDown = false; this.activePointerId = null; this.samples = [];
-    this.previousAmbientTime = 0; this.pointerEnergy = 0;
+    this.previousAmbientTime = 0; this.pointerEnergy = 0; this.inputEnergy = 0;
     if (pointerId !== null && this.canvas.hasPointerCapture(pointerId)) this.canvas.releasePointerCapture(pointerId);
     this.canvas.dataset.cursor = 'default';
     this.canvas.dispatchEvent(new Event('portfolio-cursorchange', { bubbles: true }));
@@ -635,7 +613,7 @@ class OrbitControl {
 
   private readonly handlePointerLeave = () => {
     this.previousAmbientTime = 0;
-    if (!this.isPointerDown) this.pointerEnergy *= 0.4;
+    if (!this.isPointerDown) { this.inputEnergy = this.pointerEnergy; this.quietMilliseconds = 0; }
     this.invalidate();
   };
 
@@ -669,6 +647,7 @@ interface Camera {
 }
 
 class InfiniteGridMenu {
+  private particles: ParticleField | null = null;
   private gl: WebGL2RenderingContext | null = null;
   private backgroundProgram: WebGLProgram | null = null;
   private backgroundVAO: WebGLVertexArrayObject | null = null;
@@ -808,6 +787,7 @@ class InfiniteGridMenu {
     this.destroyed = true;
     this.frames.destroy();
     this.control?.destroy();
+    this.particles?.destroy();
     this.onMovementChange(false);
     if (this.gl) {
       this.gl.deleteTexture(this.tex);
@@ -888,6 +868,7 @@ class InfiniteGridMenu {
       throw new Error('No WebGL 2 context!');
     }
     this.gl = gl;
+    this.particles = new ParticleField(gl, this.canvas);
 
     vec2.set(this.viewportSize, this.canvas.clientWidth, this.canvas.clientHeight);
     vec2.clone(this.drawBufferSize);
@@ -1064,6 +1045,7 @@ class InfiniteGridMenu {
     gl.uniform1f(this.backgroundLocations.uOrbitEnergy, this.control.isPointerDown ? 1 : 0);
     gl.bindVertexArray(this.backgroundVAO);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+    this.particles?.draw(this.control.pointerUv, this.control.pointerDirection, this.control.pointerEnergy * (this.control.isPointerDown ? .35 : 1));
 
     gl.useProgram(this.discProgram);
     gl.enable(gl.CULL_FACE);
