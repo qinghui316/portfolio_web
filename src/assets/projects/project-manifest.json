@@ -1,0 +1,9 @@
+[
+  { "id": "sayweave", "coverKey": "sayweave", "coverFile": "sayweave.webp", "sourceFile": "sayweave.png" },
+  { "id": "moonai", "coverKey": "moonai", "coverFile": "moonai.webp", "sourceFile": "moonai.png" },
+  { "id": "beaver-code", "coverKey": "eclHarness", "coverFile": "ecl-harness.webp", "sourceFile": "ecl-harness.png" },
+  { "id": "yaoxiaohui", "coverKey": "yaoxiaohui", "coverFile": "yaoxiaohui.webp", "sourceFile": "yaoxiaohui.png" },
+  { "id": "video-fast-clip", "coverKey": "videoFastClip", "coverFile": "video-fast-clip.webp", "sourceFile": "video-fast-clip.png" },
+  { "id": "qwen-embedding", "coverKey": "qwenEmbedding", "coverFile": "qwen-embedding.webp", "sourceFile": "qwen-embedding.png" },
+  { "id": "aigc-course", "coverKey": "aigcCourse", "coverFile": "aigc-course.webp", "sourceFile": "aigc-course.png" }
+]

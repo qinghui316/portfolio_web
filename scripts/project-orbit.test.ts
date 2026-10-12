@@ -15,6 +15,16 @@ test('project indices wrap in a stable data order', () => {
   assert.equal(wrapIndex(8, 6), 2);
 });
 
+test('seven projects traverse both wrap boundaries without skipped slots', () => {
+  const forward = Array.from({ length: 9 }, (_, i) => wrapIndex(resolveActiveSlot(i + .1, 0), 7));
+  assert.deepEqual(forward, [0, 1, 2, 3, 4, 5, 6, 0, 1]);
+  assert.equal(wrapIndex(-1, 7), 6);
+  assert.equal(getOrbitTargetForIndex(.1, 6, 7), -1);
+  assert.equal(getOrbitTargetForIndex(6.1, 0, 7), 7);
+  assert.equal(getNormalizedOrbitProgress(6, 7), 1);
+  assert.equal(getNormalizedOrbitProgress(7, 7), 0);
+});
+
 test('explicit selection uses the shortest continuous orbit target', () => {
   assert.equal(getOrbitTargetForIndex(0.2, 5, 6), -1);
   assert.equal(getOrbitTargetForIndex(5.8, 0, 6), 6);

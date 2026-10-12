@@ -2,14 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUpRight, ChevronLeft, ChevronRight, CircleDashed } from 'lucide-react';
 
 import InfiniteProjectMenu, { type InfiniteMenuItem } from './projects/InfiniteProjectMenu';
-import { projectAssets, useProjectAssetsStarted } from './projects/projectAssets';
+import { projectAssets, prepareProjectExperience, useProjectAssetsStarted } from './projects/projectAssets';
 import { particleSeeds } from './projects/particleField';
+import projectManifest from '../assets/projects/project-manifest.json';
 
 const staticParticles = particleSeeds(60);
 
 const {
+  firstProjectPreview,
   atlas: atlasUrl,
   covers: {
+    sayweave: sayweaveCover,
     aigcCourse: courseCover,
     eclHarness: eclCover,
     moonai: moonaiCover,
@@ -66,7 +69,20 @@ export default function SectionProjects() {
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
 
   const projects = useMemo<ProjectItem[]>(
-    () => [
+    () => ([
+      {
+        id: 'sayweave',
+        title: 'Sayweave 随言',
+        titleLines: ['Sayweave', '随言'],
+        position: 'Windows 实时语音输入与口语整理工具',
+        description: '把口述实时写入当前应用，衔接语音与键盘编辑，结合口语整理、专有词典和表达偏好，让说出的想法成为清晰、自然的文字。',
+        tags: ['Tauri 2', 'React + TS', 'Rust', 'ASR', 'SQLite'],
+        image: sayweaveCover,
+        coverAlt: '语音波形转化为文字、应用窗口与词典模块组成的概念封面',
+        status: 'live',
+        primaryLink: { label: 'View live project', href: 'https://sayweave.top/', external: true },
+        secondaryLinks: [{ label: 'GitHub', href: 'https://github.com/qinghui316/Sayweave', external: true }],
+      },
       {
         id: 'moonai',
         title: 'MoonAI 短剧 Agent 工作台',
@@ -155,20 +171,25 @@ export default function SectionProjects() {
         status: 'case-study-building',
         secondaryLinks: [],
       },
-    ],
+    ] satisfies ProjectItem[]).sort((a, b) => projectManifest.findIndex(item => item.id === a.id) - projectManifest.findIndex(item => item.id === b.id)),
     [moonaiFilmDemoVideoUrl, moonaiPromoVideoUrl],
   );
 
   useEffect(() => {
-    if (!assetsStarted) return;
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl2');
     setWebglAvailable(Boolean(gl));
     gl?.getExtension('WEBGL_lose_context')?.loseContext();
-    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setNear(true); observer.disconnect(); } }, { rootMargin: '100% 0px' });
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setNear(true);
+        void prepareProjectExperience().catch(() => undefined);
+        observer.disconnect();
+      }
+    }, { rootMargin: '100% 0px' });
     if (stageRef.current) observer.observe(stageRef.current);
     return () => observer.disconnect();
-  }, [assetsStarted]);
+  }, []);
 
   const activeProject = projects[activeIndex];
   const useInteractiveMenu = desktopPointer && !reducedMotion && webglAvailable && assetsStarted && near;
@@ -209,20 +230,22 @@ export default function SectionProjects() {
             key={`${project.id}-${offset}`}
             type="button"
             className={`projects-static-lens is-edge is-edge-${position + 1}`}
+            style={project.id === projectManifest[0].id ? { backgroundImage: `url(${firstProjectPreview})`, backgroundSize: 'cover' } : undefined}
             onClick={() => setActiveIndex(index)}
             aria-label={`选择项目：${project.title}`}
           >
-            <img src={assetsStarted ? project.image : undefined} alt="" />
+            <img src={assetsStarted ? project.image : undefined} alt="" fetchPriority="low" onLoad={event => event.currentTarget.parentElement?.setAttribute('data-cover-ready', 'true')} />
           </button>
         );
       })}
       <button
         type="button"
         className="projects-static-lens is-center"
+        style={activeProject.id === projectManifest[0].id ? { backgroundImage: `url(${firstProjectPreview})`, backgroundSize: 'cover' } : undefined}
         onClick={() => openProject(activeIndex)}
         aria-label={activeProject.primaryLink ? `打开项目：${activeProject.title}` : activeProject.title}
       >
-        <img src={assetsStarted ? activeProject.image : undefined} alt={activeProject.coverAlt} />
+        <img src={assetsStarted ? activeProject.image : undefined} alt={activeProject.coverAlt} fetchPriority="high" />
       </button>
     </div>
   );
@@ -248,7 +271,7 @@ export default function SectionProjects() {
           {useInteractiveMenu ? (
             <>
               {staticStage(menuReady)}
-              <div className={`projects-webgl ${menuReady ? 'is-ready' : ''}`}>
+              <div className={`projects-webgl ${menuReady ? 'is-ready' : ''}`} inert={!menuReady}>
                 <InfiniteProjectMenu
                   items={projects}
                   atlasUrl={atlasUrl}
@@ -274,6 +297,7 @@ export default function SectionProjects() {
                   type="button"
                   role="listitem"
                   className={index === activeIndex ? 'is-active' : ''}
+                  style={project.id === projectManifest[0].id ? { backgroundImage: `url(${firstProjectPreview})`, backgroundSize: 'cover' } : undefined}
                   onClick={() => setActiveIndex(index)}
                   aria-label={`选择项目：${project.title}`}
                   aria-pressed={index === activeIndex}
@@ -350,7 +374,7 @@ export default function SectionProjects() {
             <ChevronLeft aria-hidden="true" />
           </button>
           <span className="project-progress-edge">01</span>
-          <div className="project-progress-track">
+          <div className="project-progress-track" style={{ gridTemplateColumns: `repeat(${projects.length}, 1fr)` }}>
             <i aria-hidden="true" />
             {projects.map((project, index) => (
               <button
@@ -365,7 +389,7 @@ export default function SectionProjects() {
               </button>
             ))}
           </div>
-          <span className="project-progress-edge">06</span>
+          <span className="project-progress-edge">{String(projects.length).padStart(2, '0')}</span>
           <button type="button" onClick={() => moveSelection(1)} aria-label="下一个项目" title="下一个项目">
             <ChevronRight aria-hidden="true" />
           </button>

@@ -1,0 +1,9 @@
+# Sayweave cover provenance
+
+Generated with the built-in ImageGen tool. The reference is the existing MoonAI cover, used only for series style, texture and palette.
+
+Requested square 1536px. The tool returned 1254x1254 pixels; the saved design-source PNG was normalized to 1536x1536 before export. Runtime cover is 1024x1024. No readable product text is included in the artwork.
+
+## Prompt
+
+Generate a brand new square 1536x1536 portfolio concept cover for Sayweave, a Windows live voice-to-text app. The supplied image is ONLY a reference for the existing portfolio series' print texture, restrained palette and detailed illustrated 3D editorial rendering; do not copy its filmmaker or film imagery. New scene: a sculptural voice-to-writing desktop creation station in a gently elevated three-quarter view. A black titanium and warm-white ceramic microphone on the left sends a short coral-orange waveform into a central precision writing/caret mechanism and curling warm-white paper ribbon with abstract non-readable strokes. On the right, layered thin application window panels and a keyboard express writing across apps; small dictionary tabs and expression-preference modules are subordinate details. Coherent tangible desk-like machine, clear visual route from microphone to written output. All important objects centered inside the central 70% circle for circular glass-lens cropping; peripheral technical hairlines stay restrained. Warm white paper background, black graphite structures, coral-orange path and extremely sparse teal verification accents. Real thickness, local subtle reflections, printed grain and fine halftone texture. No readable letters, no product title, no logos, no captions, no interface small text, no watermark. Sophisticated consistent portfolio series artwork, not a website screenshot. Square composition, opaque background.
