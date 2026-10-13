@@ -274,7 +274,7 @@ export default function App() {
   }, [aboutGateReady, assetsReady, bootTimedOut, contactEntry, contactGateReady, heroWarmupReady, isExitingLoading, isLoading, setProgress, wordmarkComplete]);
 
   return (
-    <div className="bg-canvas min-h-screen text-ink overflow-x-hidden font-sans">
+    <div className="bg-canvas min-h-screen text-ink overflow-x-clip font-sans">
       {isLoading && (
         <Loading
           progress={bootProgress}

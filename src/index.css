@@ -45,7 +45,7 @@
 
   body {
     @apply bg-canvas text-ink font-sans antialiased selection:bg-primary/30;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 }
 

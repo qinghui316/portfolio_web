@@ -1,400 +1,129 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, ChevronLeft, ChevronRight, CircleDashed } from 'lucide-react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { projects, type ProjectItem } from './projects/projectData';
+import { firstProjectPreview, galleryAssets, galleryImageState, prepareProjectExperience, useGalleryAssetRevision } from './projects/projectAssets';
+import { clampProgress, galleryDimensions, GALLERY_CONFIG, progressFromScroll, scrollFromProgress, selectedFromProgress } from './projects/galleryMath';
+import './projects/ProjectGallery.css';
 
-import InfiniteProjectMenu, { type InfiniteMenuItem } from './projects/InfiniteProjectMenu';
-import { projectAssets, prepareProjectExperience, useProjectAssetsStarted } from './projects/projectAssets';
-import { particleSeeds } from './projects/particleField';
-import projectManifest from '../assets/projects/project-manifest.json';
-
-const staticParticles = particleSeeds(60);
-
-const {
-  firstProjectPreview,
-  atlas: atlasUrl,
-  covers: {
-    sayweave: sayweaveCover,
-    aigcCourse: courseCover,
-    eclHarness: eclCover,
-    moonai: moonaiCover,
-    qwenEmbedding: embeddingCover,
-    videoFastClip: videoCover,
-    yaoxiaohui: yaoxiaohuiCover,
-  },
-} = projectAssets;
-
-type ProjectStatus = 'live' | 'case-study-building';
-
-type ProjectLink = {
-  label: string;
-  href: string;
-  external: boolean;
-};
-
-type ProjectItem = InfiniteMenuItem & {
-  titleLines?: string[];
-  position: string;
-  tags: string[];
-  coverAlt: string;
-  status: ProjectStatus;
-  primaryLink?: ProjectLink;
-  secondaryLinks: ProjectLink[];
-};
-
-const useMediaQuery = (query: string) => {
-  const [matches, setMatches] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches);
-
-  useEffect(() => {
-    const media = window.matchMedia(query);
-    const update = () => setMatches(media.matches);
-    update();
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, [query]);
-
+const ProjectGallery = lazy(() => import('./projects/ProjectGallery'));
+const display = [
+  { name: ['Sayweave', '随言'], position: '实时语音输入与口语整理', summary: '把口述写入当前应用，衔接语音与键盘编辑。结合口语整理、专有词典和表达偏好，让想法自然成文。' },
+  { name: ['MoonAI 短剧', 'Agent 工作台'], position: '从剧本到成片的创作工作台', summary: '从剧本改编、镜头语言、分镜生成和参考图匹配，到视频合成，串起完整的 AI 短剧创作链路。' },
+  { name: ['Beaver Code'], position: '本地优先的 Agent 开发工作台', summary: '把项目对话、文件、终端和 Git 放在同一工作台，让多个 Agent 按规划、开发、测试和审查协作。' },
+  { name: ['遥小绘', 'AIGC 平台'], position: '团队内部的批量创作平台', summary: '把 ComfyUI、本地 API、RunningHub 与接口封装成工具，衔接飞书多维表格与批量内容生产。' },
+  { name: ['video_fast_clip', '混剪系统'], position: '长视频到短视频的生产流水线', summary: '通过切片、质量过滤、聚类、代表片段选择和多模型理解，把长视频转化为可控的短视频生产流水线。' },
+  { name: ['Qwen3-VL', 'Embedding 微调'], position: '面向视频素材的多模态召回', summary: '围绕视频素材检索建设数据、训练与评测闭环，用 Recall、MRR 和 NDCG 持续评估与迭代效果。' },
+  { name: ['AIGC 课程', '与 SOP 建设'], position: '让方法成为可复用的工作流程', summary: '把复杂 AI 工具拆成可教学、可复用、可落地的课程模块、操作流程与团队内容生产 SOP。' },
+];
+type LenisWindow = Window & { __portfolioLenis?: { scrollTo: (target: number, options?: { immediate?: boolean; duration?: number; force?: boolean }) => void; resize: () => void } };
+function useMedia(query: string) {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => { const media = window.matchMedia(query); const update = () => setMatches(media.matches); media.addEventListener('change', update); update(); return () => media.removeEventListener('change', update); }, [query]);
   return matches;
-};
+}
+function ProjectLinks({ project }: { project: ProjectItem }) {
+  const links = [...(project.primaryLink ? [{ ...project.primaryLink, label: '访问官网' }] : []), ...project.secondaryLinks];
+  return <div className="gallery-links">{links.map((link, index) => <a key={index} href={link.href} target={link.external ? '_blank' : undefined} rel={link.external ? 'noopener noreferrer' : undefined}>{({ 'Promo video': '宣传视频', 'Film demo': '成片演示' } as Record<string, string>)[link.label] ?? link.label}<ArrowUpRight size={16} /></a>)}</div>;
+}
+function Poster({ index, compact }: { index: number; compact: boolean }) {
+  const project = projects[index], url = galleryAssets[project.id][compact ? 'mobile' : 'desktop'];
+  const state = galleryImageState(url);
+  return <span className="gallery-image-wrap" data-failed={state === 'failed'} style={index === 0 ? { backgroundImage: `url(${firstProjectPreview})` } : undefined}>
+    {state === 'ready' && <img src={url} alt={project.coverAlt} width="1600" height="900" />}
+    {state === 'failed' && <span className="gallery-image-error">图片暂不可用</span>}
+  </span>;
+}
 
 export default function SectionProjects() {
-  const moonaiPromoVideoUrl = import.meta.env.VITE_MOONAI_PROMO_VIDEO_URL?.trim();
-  const moonaiFilmDemoVideoUrl = import.meta.env.VITE_MOONAI_FILM_DEMO_VIDEO_URL?.trim();
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [menuReady, setMenuReady] = useState(false);
-  const [webglAvailable, setWebglAvailable] = useState(true);
-  const [isOrbiting, setIsOrbiting] = useState(false);
-  const assetsStarted = useProjectAssetsStarted();
-  const [near, setNear] = useState(false);
-  const stageRef = useRef<HTMLDivElement>(null);
-  const wideLayout = useMediaQuery('(min-width: 900px)');
-  const desktopPointer = useMediaQuery('(min-width: 900px) and (pointer: fine)');
-  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
-
-  const projects = useMemo<ProjectItem[]>(
-    () => ([
-      {
-        id: 'sayweave',
-        title: 'Sayweave 随言',
-        titleLines: ['Sayweave', '随言'],
-        position: 'Windows 实时语音输入与口语整理工具',
-        description: '把口述实时写入当前应用，衔接语音与键盘编辑，结合口语整理、专有词典和表达偏好，让说出的想法成为清晰、自然的文字。',
-        tags: ['Tauri 2', 'React + TS', 'Rust', 'ASR', 'SQLite'],
-        image: sayweaveCover,
-        coverAlt: '语音波形转化为文字、应用窗口与词典模块组成的概念封面',
-        status: 'live',
-        primaryLink: { label: 'View live project', href: 'https://sayweave.top/', external: true },
-        secondaryLinks: [{ label: 'GitHub', href: 'https://github.com/qinghui316/Sayweave', external: true }],
-      },
-      {
-        id: 'moonai',
-        title: 'MoonAI 短剧 Agent 工作台',
-        titleLines: ['MoonAI 短剧', 'Agent 工作台'],
-        position: 'AI 短剧创作平台 / 独立全栈开发并部署上线',
-        description: '从剧本改编、镜头语言、分镜生成和参考图匹配，到视频合成，串起完整的 AI 短剧创作链路。',
-        tags: ['React + TS', 'Node.js', 'Prisma', 'PostgreSQL', 'FFmpeg'],
-        image: moonaiCover,
-        coverAlt: 'AI 影视创作工作台与分镜、时间轴构成的概念封面',
-        status: 'live',
-        primaryLink: { label: 'View live project', href: 'https://moonai.asia/', external: true },
-        secondaryLinks: [
-          { label: 'GitHub', href: 'https://github.com/qinghui316/moonaigc', external: true },
-          ...(moonaiPromoVideoUrl
-            ? [{ label: 'Promo video', href: moonaiPromoVideoUrl, external: true }]
-            : []),
-          ...(moonaiFilmDemoVideoUrl
-            ? [{ label: 'Film demo', href: moonaiFilmDemoVideoUrl, external: true }]
-            : []),
-        ],
-      },
-      {
-        id: 'beaver-code',
-        title: 'Beaver Code',
-        titleLines: ['Beaver Code'],
-        position: '本地优先的 Agent 开发桌面工作台',
-        description: '把 Codex、项目对话、文件、Terminal 和 Git 集成到同一个桌面工作台，支持直接与 Agent 开发，以及多 Agent 按规划、开发、测试和审查流程协作。',
-        tags: ['Codex', 'Multi-Agent', 'AHO', 'Git'],
-        image: eclCover,
-        coverAlt: '多 Agent、项目轨道与验证节点组成的 Harness 架构概念封面',
-        status: 'live',
-        primaryLink: {
-          label: 'View live project',
-          href: 'https://beavercode.moonai.asia/',
-          external: true,
-        },
-        secondaryLinks: [
-          { label: 'GitHub', href: 'https://github.com/qinghui316/beaver-code', external: true },
-        ],
-      },
-      {
-        id: 'yaoxiaohui',
-        title: '遥小绘飞书多维表格 AIGC 平台',
-        titleLines: ['遥小绘飞书', '多维表格 AIGC 平台'],
-        position: '团队内部 AIGC 操作平台',
-        description: '把 ComfyUI、本地 API、RunningHub、爬虫和闭源接口封装成可批量调用的 MCP 工具与生产流程。',
-        tags: ['Agent', 'MCP', 'ComfyUI', '飞书多维表格'],
-        image: yaoxiaohuiCover,
-        coverAlt: '多维表格、工作流模块和批处理生产线组成的概念封面',
-        status: 'case-study-building',
-        secondaryLinks: [],
-      },
-      {
-        id: 'video-fast-clip',
-        title: 'video_fast_clip 混剪系统',
-        titleLines: ['video_fast_clip', '混剪系统'],
-        position: '长视频到短视频成片的自动化流水线',
-        description: '通过切片、质量过滤、聚类、代表片段选择和多模型理解，把长视频转化为可控的短视频生产流水线。',
-        tags: ['Python', 'OpenCV', 'FFmpeg', 'Embedding', 'VLM'],
-        image: videoCover,
-        coverAlt: '胶片、视频片段聚类和剪辑时间轴组成的概念封面',
-        status: 'case-study-building',
-        secondaryLinks: [],
-      },
-      {
-        id: 'qwen-embedding',
-        title: 'Qwen3-VL-Embedding 微调',
-        titleLines: ['Qwen3-VL-Embedding', '微调'],
-        position: '面向视频素材的多模态精细召回训练',
-        description: '建设数据、训练与评测闭环，以 Recall、MRR 和 NDCG 驱动视频素材检索效果持续迭代。',
-        tags: ['Qwen3-VL-8B', 'LoRA', 'Recall', 'MRR', 'NDCG'],
-        image: embeddingCover,
-        coverAlt: '媒体片段围绕向量空间聚类和召回的概念封面',
-        status: 'case-study-building',
-        secondaryLinks: [],
-      },
-      {
-        id: 'aigc-course',
-        title: 'AIGC 课程与 SOP 建设',
-        titleLines: ['AIGC 课程', '与 SOP 建设'],
-        position: 'AI 课程主讲与可复用方法论沉淀',
-        description: '把复杂 AI 工具拆成可教学、可复用、可落地的课程模块、操作流程与团队内容生产 SOP。',
-        tags: ['AIGC', 'ComfyUI', 'Agent 应用', 'SOP'],
-        image: courseCover,
-        coverAlt: '课程模块、流程图和操作工作台组成的概念封面',
-        status: 'case-study-building',
-        secondaryLinks: [],
-      },
-    ] satisfies ProjectItem[]).sort((a, b) => projectManifest.findIndex(item => item.id === a.id) - projectManifest.findIndex(item => item.id === b.id)),
-    [moonaiFilmDemoVideoUrl, moonaiPromoVideoUrl],
-  );
-
+  useGalleryAssetRevision();
+  const compact = useMedia('(max-width: 899px), (pointer: coarse)');
+  const reduced = useMedia('(prefers-reduced-motion: reduce)');
+  const [failed, setFailed] = useState(false), [ready, setReady] = useState(false), [near, setNear] = useState(() => window.location.hash === '#projects');
+  const [progress, setProgress] = useState(0), [active, setActive] = useState(0), [exit, setExit] = useState(0);
+  const section = useRef<HTMLElement>(null), stage = useRef<HTMLDivElement>(null), scroller = useRef<HTMLDivElement>(null);
+  const activeRef = useRef(0), metrics = useRef({ top: 0, height: 1 }), scrollFrame = useRef(0);
+  const staticMode = compact || reduced || failed;
+  const items = useMemo(() => projects.map(project => ({ id: project.id, title: project.title, image: galleryAssets[project.id].desktop })), []);
+  const onReady = useCallback((value: boolean) => setReady(value), []);
+  const onError = useCallback(() => { setFailed(true); setReady(false); }, []);
+  const activate = useCallback((index: number) => { activeRef.current = index; setActive(index); }, []);
+  const navigate = useCallback((value: number, immediate = false) => {
+    const next = clampProgress(value, projects.length);
+    if (staticMode) {
+      const index = Math.round(next), list = scroller.current, node = list?.children[index] as HTMLElement | undefined;
+      if (list && node) list.scrollTo({ left: node.offsetLeft - list.clientWidth / 2 + node.clientWidth / 2, behavior: reduced || immediate ? 'instant' : 'smooth' });
+      activate(index); return;
+    }
+    const top = scrollFromProgress(next, metrics.current.top, metrics.current.height, projects.length);
+    const lenis = (window as LenisWindow).__portfolioLenis;
+    if (lenis) lenis.scrollTo(top, { immediate, duration: .7 });
+    else window.scrollTo({ top, behavior: immediate ? 'instant' : 'smooth' });
+  }, [staticMode, reduced, activate]);
   useEffect(() => {
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl2');
-    setWebglAvailable(Boolean(gl));
-    gl?.getExtension('WEBGL_lose_context')?.loseContext();
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setNear(true);
-        void prepareProjectExperience().catch(() => undefined);
-        observer.disconnect();
-      }
-    }, { rootMargin: '100% 0px' });
-    if (stageRef.current) observer.observe(stageRef.current);
+    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setNear(true); void prepareProjectExperience(activeRef.current); observer.disconnect(); } }, { rootMargin: '100% 0px' });
+    if (section.current) observer.observe(section.current);
     return () => observer.disconnect();
   }, []);
-
-  const activeProject = projects[activeIndex];
-  const useInteractiveMenu = desktopPointer && !reducedMotion && webglAvailable && assetsStarted && near;
-
-  const selectProject = useCallback((index: number) => {
-    setActiveIndex(index);
-  }, []);
-
-  const openProject = useCallback(
-    (index: number) => {
-      const link = projects[index]?.primaryLink;
-      if (!link) return;
-      if (link.external) window.open(link.href, '_blank', 'noopener,noreferrer');
-      else window.location.assign(link.href);
-    },
-    [projects],
-  );
-
-  const handleMenuReady = useCallback((ready: boolean) => {
-    setMenuReady(ready);
-  }, []);
-
-  const handleProgressChange = useCallback((progress: number) => {
-    stageRef.current?.style.setProperty('--project-progress', `${Math.max(0, Math.min(1, progress)) * 100}%`);
-  }, []);
-
-  const moveSelection = (offset: number) => {
-    setActiveIndex(current => (current + offset + projects.length) % projects.length);
-  };
-
-  const staticStage = (hidden: boolean) => (
-    <div className={`projects-static-stage ${hidden ? 'is-hidden' : ''}`}>
-      {[-2, -1, 1, 2].map((offset, position) => {
-        const index = (activeIndex + offset + projects.length) % projects.length;
-        const project = projects[index];
-        return (
-          <button
-            key={`${project.id}-${offset}`}
-            type="button"
-            className={`projects-static-lens is-edge is-edge-${position + 1}`}
-            style={project.id === projectManifest[0].id ? { backgroundImage: `url(${firstProjectPreview})`, backgroundSize: 'cover' } : undefined}
-            onClick={() => setActiveIndex(index)}
-            aria-label={`选择项目：${project.title}`}
-          >
-            <img src={assetsStarted ? project.image : undefined} alt="" fetchPriority="low" onLoad={event => event.currentTarget.parentElement?.setAttribute('data-cover-ready', 'true')} />
-          </button>
-        );
-      })}
-      <button
-        type="button"
-        className="projects-static-lens is-center"
-        style={activeProject.id === projectManifest[0].id ? { backgroundImage: `url(${firstProjectPreview})`, backgroundSize: 'cover' } : undefined}
-        onClick={() => openProject(activeIndex)}
-        aria-label={activeProject.primaryLink ? `打开项目：${activeProject.title}` : activeProject.title}
-      >
-        <img src={assetsStarted ? activeProject.image : undefined} alt={activeProject.coverAlt} fetchPriority="high" />
-      </button>
+  useEffect(() => { if (near) void prepareProjectExperience(active); }, [near, active, compact]);
+  useEffect(() => {
+    const node = section.current, surface = stage.current;
+    if (!node || !surface) return;
+    let disposed = false;
+    const update = () => {
+      scrollFrame.current = 0;
+      if (staticMode || disposed) return;
+      const { top, height } = metrics.current;
+      const next = progressFromScroll(window.scrollY, top, height, projects.length);
+      setProgress(next); activate(selectedFromProgress(next, activeRef.current, projects.length));
+      setExit(Math.max(0, Math.min(1, (window.scrollY - scrollFromProgress(projects.length - 1, top, height, projects.length)) / (height * GALLERY_CONFIG.releaseScreens))));
+    };
+    const scroll = () => { if (!scrollFrame.current) scrollFrame.current = requestAnimationFrame(update); };
+    const layout = () => {
+      metrics.current = { top: node.getBoundingClientRect().top + window.scrollY, height: surface.clientHeight };
+      if (!staticMode) {
+        const size = galleryDimensions(surface.clientWidth, surface.clientHeight);
+        surface.style.setProperty('--poster-width', `${size.boardWidth}px`);
+        surface.style.setProperty('--poster-height', `${size.boardHeight}px`);
+        surface.style.setProperty('--poster-center', `${size.centerY}px`);
+      }
+      (window as LenisWindow).__portfolioLenis?.resize(); scroll();
+    };
+    const resize = new ResizeObserver(layout); resize.observe(node); resize.observe(surface); resize.observe(document.body);
+    window.addEventListener('scroll', scroll, { passive: true }); window.addEventListener('resize', layout);
+    layout(); void document.fonts.ready.then(() => { if (!disposed) layout(); });
+    return () => { disposed = true; resize.disconnect(); window.removeEventListener('scroll', scroll); window.removeEventListener('resize', layout); cancelAnimationFrame(scrollFrame.current); scrollFrame.current = 0; };
+  }, [staticMode, activate]);
+  useEffect(() => {
+    if (staticMode) { setReady(false); requestAnimationFrame(() => navigate(activeRef.current, true)); }
+  }, [staticMode, navigate]);
+  const current = projects[active], copy = display[active];
+  useEffect(() => {
+    if (!reduced) stage.current?.querySelectorAll('.gallery-copy-content').forEach(node => node.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' }));
+  }, [active, reduced]);
+  return <section id="projects" ref={section} className={`product-gallery-section ${staticMode ? 'is-static' : ''}`} aria-labelledby="gallery-heading" data-active={active} style={{ '--gallery-screens': 1 + (projects.length - 1) * GALLERY_CONFIG.stepScreens + GALLERY_CONFIG.releaseScreens } as CSSProperties} onKeyDown={event => {
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); navigate(activeRef.current + (event.key === 'ArrowLeft' ? -1 : 1)); }
+  }}>
+    <div ref={stage} className={`gallery-stage ${ready && !staticMode ? 'is-ready' : ''}`}>
+      <h2 id="gallery-heading">作品</h2>
+      {staticMode ? <div className="gallery-snap-list" ref={scroller} data-lenis-prevent onScroll={() => {
+        cancelAnimationFrame(scrollFrame.current); scrollFrame.current = requestAnimationFrame(() => {
+          scrollFrame.current = 0; const list = scroller.current; if (!list) return;
+          let best = 0, distance = Infinity;
+          Array.from(list.children).forEach((child, index) => { const item = child as HTMLElement; const delta = Math.abs(item.offsetLeft + item.clientWidth / 2 - list.scrollLeft - list.clientWidth / 2); if (delta < distance) { distance = delta; best = index; } });
+          activate(best);
+        });
+      }}>{projects.map((project, index) => <article key={project.id} className="gallery-snap-item" aria-label={project.title} inert={active !== index}>
+        <div className="gallery-poster"><Poster index={index} compact={compact} /></div>
+        <div className="gallery-snap-copy"><h3>{project.title}</h3><p className="gallery-position">{display[index].position}</p><p>{display[index].summary}</p><ProjectLinks project={project} /></div>
+      </article>)}</div> : <>
+        <div className="gallery-static-poster" aria-hidden={ready}><Poster index={active} compact={false} /></div>
+        {near && <Suspense fallback={null}><ProjectGallery items={items} progress={progress} activeIndex={active} exit={exit} onProgress={navigate} onReady={onReady} onError={onError} /></Suspense>}
+        <div className="gallery-side-copy gallery-identity"><div className="gallery-copy-content"><h3 className={active === 4 || active === 5 ? 'is-technical' : ''}>{copy.name.map(line => <span key={line}>{line}</span>)}</h3><p>{copy.position}</p></div></div>
+        <div className="gallery-side-copy gallery-description"><div className="gallery-copy-content"><p>{copy.summary}</p><ProjectLinks project={current} /></div></div>
+      </>}
+      <button className="gallery-arrow gallery-arrow-left" type="button" aria-label="上一个项目" title="上一个项目" disabled={active === 0} onClick={() => navigate(active - 1)}><ChevronLeft size={24} /></button>
+      <button className="gallery-arrow gallery-arrow-right" type="button" aria-label="下一个项目" title="下一个项目" disabled={active === projects.length - 1} onClick={() => navigate(active + 1)}><ChevronRight size={24} /></button>
+      <span className="sr-only" aria-live="polite">{current.title}</span>
     </div>
-  );
-
-  return (
-    <section className="projects-section" id="projects" aria-labelledby="projects-title">
-      <div className="projects-grid-overlay" aria-hidden="true" />
-      <div className={`projects-particle-fallback ${menuReady && useInteractiveMenu ? 'is-hidden' : ''}`} aria-hidden="true">
-        {Array.from({ length: 60 }, (_, i) => <i key={i} style={{ left: `${staticParticles[i*4]*100}%`, bottom: `${staticParticles[i*4+1]*86+14}%`, opacity: .12 + staticParticles[i*4+3]*.13 }} />)}
-      </div>
-
-      <header className="projects-heading">
-        <p>Selected systems</p>
-        <h2 id="projects-title">Featured <em>Projects</em></h2>
-      </header>
-
-      <div
-        ref={stageRef}
-        className={`projects-stage ${isOrbiting ? 'is-orbiting' : ''}`}
-        style={{ '--project-progress': `${(activeIndex / Math.max(1, projects.length - 1)) * 100}%` } as React.CSSProperties}
-      >
-        <div className="projects-orbit is-ready">
-          {useInteractiveMenu ? (
-            <>
-              {staticStage(menuReady)}
-              <div className={`projects-webgl ${menuReady ? 'is-ready' : ''}`} inert={!menuReady}>
-                <InfiniteProjectMenu
-                  items={projects}
-                  atlasUrl={atlasUrl}
-                  activeIndex={activeIndex}
-                  onActiveChange={selectProject}
-                  onActivate={openProject}
-                  onReady={handleMenuReady}
-                  onMovementChange={setIsOrbiting}
-                  onProgressChange={handleProgressChange}
-                  restCameraDistance={3.8}
-                  dragCameraDistance={4.8}
-                  lensScale={0.47}
-                />
-              </div>
-            </>
-          ) : wideLayout ? (
-            staticStage(false)
-          ) : (
-            <div className="projects-fallback" role="list" aria-label="项目列表">
-              {projects.map((project, index) => (
-                <button
-                  key={project.id}
-                  type="button"
-                  role="listitem"
-                  className={index === activeIndex ? 'is-active' : ''}
-                  style={project.id === projectManifest[0].id ? { backgroundImage: `url(${firstProjectPreview})`, backgroundSize: 'cover' } : undefined}
-                  onClick={() => setActiveIndex(index)}
-                  aria-label={`选择项目：${project.title}`}
-                  aria-pressed={index === activeIndex}
-                >
-                  <img src={assetsStarted ? project.image : undefined} alt={project.coverAlt} />
-                  <span>{String(index + 1).padStart(2, '0')}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="project-title-panel" aria-live="polite">
-          <div className="project-stage-copy" key={`title-${activeProject.id}`}>
-            <p className="project-position">{activeProject.position}</p>
-            <h3 aria-label={activeProject.title}>
-              {(activeProject.titleLines ?? [activeProject.title]).map(line => (
-                <span
-                  key={line}
-                  aria-hidden="true"
-                  className={`project-title-line ${line.length >= 17 ? 'is-long' : ''}`}
-                >
-                  {line}
-                </span>
-              ))}
-            </h3>
-          </div>
-        </div>
-
-        <aside className="project-detail-panel" aria-live="polite">
-          <div className="project-detail-topline">
-            <span>{String(activeIndex + 1).padStart(2, '0')} / {String(projects.length).padStart(2, '0')}</span>
-            <span className={`project-status is-${activeProject.status}`}>
-              <i /> {activeProject.status === 'live' ? 'Live system' : 'Case study building'}
-            </span>
-          </div>
-          <div className="project-stage-copy" key={`detail-${activeProject.id}`}>
-            <p className="project-description">{activeProject.description}</p>
-            <div className="project-tags" aria-label="技术标签">
-              {activeProject.tags.map(tag => <span key={tag}>{tag}</span>)}
-            </div>
-          </div>
-        </aside>
-
-        <div className="project-stage-action">
-          {activeProject.primaryLink ? (
-            <a
-              className="project-orbit-link"
-              href={activeProject.primaryLink.href}
-              target={activeProject.primaryLink.external ? '_blank' : undefined}
-              rel={activeProject.primaryLink.external ? 'noreferrer' : undefined}
-              aria-label={`${activeProject.primaryLink.label}：${activeProject.title}`}
-              title={activeProject.primaryLink.label}
-            >
-              <ArrowUpRight aria-hidden="true" />
-            </a>
-          ) : (
-            <span className="project-orbit-link is-disabled" aria-label="案例页面建设中">
-              <CircleDashed aria-hidden="true" />
-            </span>
-          )}
-        </div>
-
-        {activeProject.secondaryLinks.length > 0 && (
-          <div className="project-secondary-links">
-            {activeProject.secondaryLinks.map(link => (
-              <a key={link.href} href={link.href} target="_blank" rel="noreferrer">{link.label}</a>
-            ))}
-          </div>
-        )}
-
-        <nav className="project-progress" aria-label="选择项目">
-          <button type="button" onClick={() => moveSelection(-1)} aria-label="上一个项目" title="上一个项目">
-            <ChevronLeft aria-hidden="true" />
-          </button>
-          <span className="project-progress-edge">01</span>
-          <div className="project-progress-track" style={{ gridTemplateColumns: `repeat(${projects.length}, 1fr)` }}>
-            <i aria-hidden="true" />
-            {projects.map((project, index) => (
-              <button
-                key={project.id}
-                type="button"
-                className={index === activeIndex ? 'is-active' : ''}
-                onClick={() => setActiveIndex(index)}
-                aria-label={`选择项目：${project.title}`}
-                aria-current={index === activeIndex ? 'true' : undefined}
-              >
-                <span />
-              </button>
-            ))}
-          </div>
-          <span className="project-progress-edge">{String(projects.length).padStart(2, '0')}</span>
-          <button type="button" onClick={() => moveSelection(1)} aria-label="下一个项目" title="下一个项目">
-            <ChevronRight aria-hidden="true" />
-          </button>
-        </nav>
-      </div>
-    </section>
-  );
+  </section>;
 }
