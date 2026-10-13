@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { projects, type ProjectItem } from './projects/projectData';
 import { firstProjectPreview, galleryAssets, galleryImageState, prepareProjectExperience, useGalleryAssetRevision } from './projects/projectAssets';
-import { clampProgress, galleryDimensions, GALLERY_CONFIG, progressFromScroll, scrollFromProgress, selectedFromProgress } from './projects/galleryMath';
+import { clampProgress, galleryDimensions, galleryWheelProgress, GalleryWheelGesture, GALLERY_CONFIG, progressFromScroll, scrollFromProgress, selectedFromProgress } from './projects/galleryMath';
 import './projects/ProjectGallery.css';
 
 const ProjectGallery = lazy(() => import('./projects/ProjectGallery'));
@@ -15,7 +15,10 @@ const display = [
   { name: ['Qwen3-VL', 'Embedding 微调'], position: '面向视频素材的多模态召回', summary: '围绕视频素材检索建设数据、训练与评测闭环，用 Recall、MRR 和 NDCG 持续评估与迭代效果。' },
   { name: ['AIGC 课程', '与 SOP 建设'], position: '让方法成为可复用的工作流程', summary: '把复杂 AI 工具拆成可教学、可复用、可落地的课程模块、操作流程与团队内容生产 SOP。' },
 ];
-type LenisWindow = Window & { __portfolioLenis?: { scrollTo: (target: number, options?: { immediate?: boolean; duration?: number; force?: boolean }) => void; resize: () => void } };
+type LenisWindow = Window & { __portfolioLenis?: {
+  scrollTo: (target: number, options?: { immediate?: boolean; duration?: number; lerp?: number; programmatic?: boolean; force?: boolean }) => void;
+  resize: () => void; targetScroll: number; isStopped: boolean; limit: number;
+} };
 function useMedia(query: string) {
   const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
   useEffect(() => { const media = window.matchMedia(query); const update = () => setMatches(media.matches); media.addEventListener('change', update); update(); return () => media.removeEventListener('change', update); }, [query]);
@@ -42,6 +45,7 @@ export default function SectionProjects() {
   const [progress, setProgress] = useState(0), [active, setActive] = useState(0), [exit, setExit] = useState(0);
   const section = useRef<HTMLElement>(null), stage = useRef<HTMLDivElement>(null), scroller = useRef<HTMLDivElement>(null);
   const activeRef = useRef(0), metrics = useRef({ top: 0, height: 1 }), scrollFrame = useRef(0);
+  const galleryScroll = useRef<((top: number, immediate: boolean) => void) | null>(null);
   const staticMode = compact || reduced || failed;
   const items = useMemo(() => projects.map(project => ({ id: project.id, title: project.title, image: galleryAssets[project.id].desktop })), []);
   const onReady = useCallback((value: boolean) => setReady(value), []);
@@ -55,6 +59,7 @@ export default function SectionProjects() {
       activate(index); return;
     }
     const top = scrollFromProgress(next, metrics.current.top, metrics.current.height, projects.length);
+    if (galleryScroll.current) { galleryScroll.current(top, immediate); return; }
     const lenis = (window as LenisWindow).__portfolioLenis;
     if (lenis) lenis.scrollTo(top, { immediate, duration: .7 });
     else window.scrollTo({ top, behavior: immediate ? 'instant' : 'smooth' });
@@ -68,10 +73,50 @@ export default function SectionProjects() {
   useEffect(() => {
     const node = section.current, surface = stage.current;
     if (!node || !surface) return;
-    let disposed = false;
+    let disposed = false, snapTimer = 0, measuredWidth = 0;
+    const gesture = new GalleryWheelGesture();
+    const cancelSnap = () => { window.clearTimeout(snapTimer); snapTimer = 0; gesture.cancel(); };
+    const follow = (top: number, immediate: boolean) => {
+      const lenis = (window as LenisWindow).__portfolioLenis;
+      // Lenis uses exponential damping. Convert the reference's .05 per-frame lerp
+      // so both follow curves match at any refresh rate, overriding global duration.
+      if (lenis) lenis.scrollTo(top, { immediate, duration: 0, lerp: -Math.log(1 - GALLERY_CONFIG.scrollEase), programmatic: false });
+      else window.scrollTo({ top, behavior: immediate ? 'instant' : 'smooth' });
+    };
+    if (!staticMode) galleryScroll.current = (top, immediate) => { cancelSnap(); follow(top, immediate); };
+    const wheel = (event: WheelEvent) => {
+      if (staticMode || event.ctrlKey || event.defaultPrevented) return;
+      const lenis = (window as LenisWindow).__portfolioLenis;
+      if (lenis?.isStopped) { cancelSnap(); return; }
+      if (event.target instanceof Element && event.target.closest('[data-lenis-prevent], [data-lenis-prevent-wheel]')) { cancelSnap(); return; }
+      const { top, height } = metrics.current;
+      const end = scrollFromProgress(projects.length - 1, top, height, projects.length);
+      const delta = galleryWheelProgress(event.deltaX, event.deltaY, event.deltaMode, surface.clientWidth, height);
+      if (!delta) return;
+      if (gesture.target !== null && lenis && Math.abs(lenis.targetScroll - gesture.target) > 1) cancelSnap();
+      const now = performance.now();
+      const inGallery = window.scrollY >= top - 1 && window.scrollY <= end + height * GALLERY_CONFIG.releaseScreens + 1;
+      const onGallery = event.target instanceof Node && surface.contains(event.target);
+      // Keep the entire entering/leaving gesture on the same gain and damping.
+      // Subsequent gestures elsewhere return to normal page scrolling.
+      if (!inGallery && !onGallery && !gesture.owns(now)) return;
+      event.preventDefault(); event.stopPropagation();
+      const input = gesture.input(delta * height * GALLERY_CONFIG.stepScreens, window.scrollY, now, lenis?.limit ?? document.documentElement.scrollHeight - window.innerHeight);
+      follow(input.target, false);
+      window.clearTimeout(snapTimer);
+      snapTimer = window.setTimeout(() => {
+        snapTimer = 0;
+        if (gesture.target === null || document.hidden) { cancelSnap(); return; }
+        if (lenis && Math.abs(lenis.targetScroll - gesture.target) > 1) { cancelSnap(); return; }
+        const target = gesture.snap(top, end, height * GALLERY_CONFIG.stepScreens);
+        if (target !== null) follow(target, false);
+      }, input.delay);
+    };
     const update = () => {
       scrollFrame.current = 0;
       if (staticMode || disposed) return;
+      const lenis = (window as LenisWindow).__portfolioLenis;
+      if (gesture.target !== null && lenis && Math.abs(lenis.targetScroll - gesture.target) > 1) cancelSnap();
       const { top, height } = metrics.current;
       const next = progressFromScroll(window.scrollY, top, height, projects.length);
       setProgress(next); activate(selectedFromProgress(next, activeRef.current, projects.length));
@@ -79,19 +124,32 @@ export default function SectionProjects() {
     };
     const scroll = () => { if (!scrollFrame.current) scrollFrame.current = requestAnimationFrame(update); };
     const layout = () => {
-      metrics.current = { top: node.getBoundingClientRect().top + window.scrollY, height: surface.clientHeight };
-      if (!staticMode) {
+      const next = { top: node.getBoundingClientRect().top + window.scrollY, height: surface.clientHeight };
+      const changed = Math.abs(next.top - metrics.current.top) > .5 || next.height !== metrics.current.height || measuredWidth !== surface.clientWidth;
+      if (changed) { cancelSnap(); metrics.current = next; measuredWidth = surface.clientWidth; }
+      if (!staticMode && changed) {
         const size = galleryDimensions(surface.clientWidth, surface.clientHeight);
         surface.style.setProperty('--poster-width', `${size.boardWidth}px`);
         surface.style.setProperty('--poster-height', `${size.boardHeight}px`);
         surface.style.setProperty('--poster-center', `${size.centerY}px`);
       }
-      (window as LenisWindow).__portfolioLenis?.resize(); scroll();
+      if (changed) (window as LenisWindow).__portfolioLenis?.resize();
+      scroll();
     };
     const resize = new ResizeObserver(layout); resize.observe(node); resize.observe(surface); resize.observe(document.body);
+    window.addEventListener('wheel', wheel, { passive: false, capture: true });
+    window.addEventListener('pointerdown', cancelSnap, true); window.addEventListener('keydown', cancelSnap, true);
+    window.addEventListener('blur', cancelSnap); document.addEventListener('visibilitychange', cancelSnap);
     window.addEventListener('scroll', scroll, { passive: true }); window.addEventListener('resize', layout);
     layout(); void document.fonts.ready.then(() => { if (!disposed) layout(); });
-    return () => { disposed = true; resize.disconnect(); window.removeEventListener('scroll', scroll); window.removeEventListener('resize', layout); cancelAnimationFrame(scrollFrame.current); scrollFrame.current = 0; };
+    return () => {
+      disposed = true; galleryScroll.current = null; cancelSnap(); resize.disconnect();
+      window.removeEventListener('wheel', wheel, true);
+      window.removeEventListener('pointerdown', cancelSnap, true); window.removeEventListener('keydown', cancelSnap, true);
+      window.removeEventListener('blur', cancelSnap); document.removeEventListener('visibilitychange', cancelSnap);
+      window.removeEventListener('scroll', scroll); window.removeEventListener('resize', layout);
+      cancelAnimationFrame(scrollFrame.current); scrollFrame.current = 0;
+    };
   }, [staticMode, activate]);
   useEffect(() => {
     if (staticMode) { setReady(false); requestAnimationFrame(() => navigate(activeRef.current, true)); }

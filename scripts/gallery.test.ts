@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { clampProgress, galleryDistance, galleryPose, galleryDimensions, galleryScrollLength, progressFromScroll, scrollFromProgress, selectedFromProgress } from '../src/components/projects/galleryMath';
+import { clampProgress, galleryDistance, galleryPose, galleryDimensions, galleryScrollLength, galleryWheelProgress, GalleryWheelGesture, progressFromScroll, scrollFromProgress, selectedFromProgress } from '../src/components/projects/galleryMath';
 import sharp from 'sharp';
 import { stat,readFile } from 'node:fs/promises';
 
@@ -27,6 +27,60 @@ test('selection hysteresis tolerates boundary noise and fast page scroll',()=>{
   assert.equal(selectedFromProgress(.46,1,7),1);
   assert.equal(selectedFromProgress(.44,1,7),0);
   assert.equal(selectedFromProgress(5.8,0,7),6);
+});
+
+test('wheel travel matches reference pixels across viewports and input units',()=>{
+  for(const [width,height] of [[1920,1080],[1440,900],[1024,768]]){
+    const spacing=galleryDimensions(width,height).spacing;
+    assert.ok(Math.abs(galleryWheelProgress(0,120,0,width,height)*spacing-120)<1e-10);
+    assert.equal(galleryWheelProgress(0,3,1,width,height),galleryWheelProgress(0,48,0,width,height));
+    assert.equal(galleryWheelProgress(0,1,2,width,height),galleryWheelProgress(0,height,0,width,height));
+    assert.equal(galleryWheelProgress(-120,20,0,width,height),-galleryWheelProgress(0,120,0,width,height));
+    assert.ok(galleryWheelProgress(0,120,0,width,height)<120*1.7/(height*.65));
+    assert.equal(Math.round(2+galleryWheelProgress(0,spacing*.65,0,width,height)),3);
+  }
+});
+
+test('slow wheel detents accumulate even if the first detent has snapped back',()=>{
+  for(const direction of [1,-1]) for(const interval of [45,220,350]){
+    const gesture=new GalleryWheelGesture();
+    let current=2000;
+    for(let i=0;i<5;i++){
+      const input=gesture.input(direction*120,current,i*interval,10000);
+      if(i>0)assert.ok(input.delay>=Math.min(500,interval*1.5));
+      // Reproduce the worst case: every partial detent snaps back immediately.
+      current=gesture.snap(0,10000,1000)!;
+    }
+    assert.equal(gesture.snap(0,10000,1000),2000+direction*1000);
+  }
+});
+
+test('reversing in flight responds immediately from visible position in both directions',()=>{
+  for(const direction of [1,-1]){
+    const gesture=new GalleryWheelGesture();
+    gesture.input(direction*600,2000,0,10000);
+    const visible=2000+direction*100;
+    assert.equal(gesture.input(-direction*120,visible,60,10000).target,visible-direction*120);
+  }
+});
+
+test('boundary crossing keeps the same gain without clamping to the last project',()=>{
+  const gesture=new GalleryWheelGesture();
+  assert.equal(gesture.input(120,5940,0,10000).target,6060);
+  assert.equal(gesture.snap(0,6000,1000),null);
+  assert.equal(gesture.input(120,5970,100,10000).target,6180);
+  assert.equal(gesture.snap(0,6000,1000),null);
+  const fresh=gesture.input(120,6200,1000,10000);
+  assert.equal(fresh.target,6320);
+  assert.equal(fresh.delay,140);
+  gesture.cancel();assert.equal(gesture.owns(1001),false);
+});
+
+test('new same-direction input cannot move against a snap already in progress',()=>{
+  const forward=new GalleryWheelGesture();forward.input(650,2000,0,10000);forward.snap(0,10000,1000);
+  assert.ok(forward.input(120,2850,200,10000).target>3000);
+  const reverse=new GalleryWheelGesture();reverse.input(-650,2000,0,10000);reverse.snap(0,10000,1000);
+  assert.ok(reverse.input(-120,1150,200,10000).target<1000);
 });
 test('poster and side copy have fixed measurable boundaries',()=>{
   for(const [width,height] of [[1920,1080],[1440,900],[1024,768]]){
